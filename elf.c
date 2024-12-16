@@ -100,6 +100,7 @@ int affiche_header(Elf32_Ehdr entete){
     return SUCCES;
 }
 
+
 int main (int argc, char *argv[]){
     FILE* fichier= fopen(argv[1], "rb");
     if (fichier==NULL){
