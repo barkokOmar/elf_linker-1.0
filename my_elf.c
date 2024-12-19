@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+//#define NDEBUG 
 #include <assert.h>
-
+#include "util.h"
 #include "my_elf.h"
 
 #define MEMORYFAIL 4
+
+
 
 erreur_t read_header(FILE *fichier, Elf32_Ehdr *entete) {
 	assert(fichier);	//le fichier doit etre ouvert en lecture bit a bit
@@ -13,59 +16,62 @@ erreur_t read_header(FILE *fichier, Elf32_Ehdr *entete) {
     size_t taille_lue;	// utilisee pour verifier le nombre d'octets lues
 
     // lire les 16 premier octets pour elf identification
-    taille_lue = fread(entete->e_ident, sizeof(unsigned char), EI_NIDENT, fichier);
-    assert(sizeof(unsigned char)*EI_NIDENET == taille_lue);
+    taille_lue = fread(&(entete->e_ident), sizeof(unsigned char), EI_NIDENT, fichier);
+    assert(sizeof(unsigned char)*EI_NIDENT == taille_lue);
 
     // lire e_type
-    taille_lue = fread(entete->e_type, sizeof(Elf32_Half), 1, fichier);
+	Elf32_Half tmp;
+    taille_lue = fread(&tmp, sizeof(Elf32_Half), 1, fichier);
+	entete->e_type = reverse_2(tmp);
 	assert(sizeof(Elf32_Half) == taille_lue);
 
 	// lire e_machine
-    taille_lue = fread(entete->e_machine, sizeof(Elf32_Half), 1, fichier);
+    taille_lue = fread(&(entete->e_machine), sizeof(Elf32_Half), 1, fichier);
 	assert(sizeof(Elf32_Half) == taille_lue);
 
     // lire e_version
-    taille_lue = fread(entete->e_version, sizeof(Elf32_Word), 1, fichier);
+    taille_lue = fread(&(entete->e_version), sizeof(Elf32_Word), 1, fichier);
 	assert(sizeof(Elf32_Word) == taille_lue);
+	printf("%ld\n",taille_lue);
 
 	// lire e_entry
-    taille_lue = fread(entete->e_entry, sizeof(Elf32_Addr), 1, fichier);
+    taille_lue = fread(&(entete->e_entry), sizeof(Elf32_Addr), 1, fichier);
 	assert(sizeof(Elf32_Addr) == taille_lue);
 	
 	// lire e_phoff
-    taille_lue = fread(entete->e_phoff, sizeof(Elf32_Off), 1, fichier);
+    taille_lue = fread(&(entete->e_phoff), sizeof(Elf32_Off), 1, fichier);
 	assert(sizeof(Elf32_Off) == taille_lue);
 	
     // lire e_shoff 
-    taille_lue = fread(entete->e_shoff, sizeof(Elf32_Off), 1, fichier);
+    taille_lue = fread(&(entete->e_shoff), sizeof(Elf32_Off), 1, fichier);
 	assert(sizeof(Elf32_Off) == taille_lue);
 
 	// lire e_flags
-    taille_lue = fread(entete->e_flags, sizeof(Elf32_Word), 1, fichier);
+    taille_lue = fread(&(entete->e_flags), sizeof(Elf32_Word), 1, fichier);
 	assert(sizeof(Elf32_Word) == taille_lue);
 
     // lire e_ehsize
-    taille_lue = fread(entete->e_ehsize, sizeof(Elf32_Half), 1, fichier);
+    taille_lue = fread(&(entete->e_ehsize), sizeof(Elf32_Half), 1, fichier);
 	assert(sizeof(Elf32_Half) == taille_lue);
 
 	// lire e_phentisize
-    taille_lue = fread(entete->e_phentsize, sizeof(Elf32_Half), 1, fichier);
+    taille_lue = fread(&(entete->e_phentsize), sizeof(Elf32_Half), 1, fichier);
 	assert(sizeof(Elf32_Half) == taille_lue);
 	
 	// lire e_phnum
-    taille_lue = fread(entete->e_phnum, sizeof(Elf32_Half), 1, fichier);
+    taille_lue = fread(&(entete->e_phnum), sizeof(Elf32_Half), 1, fichier);
 	assert(sizeof(Elf32_Half) == taille_lue);
 
 	// lire e_shentsize
-    taille_lue = fread(entete->e_shentsize, sizeof(Elf32_Half), 1, fichier);
+    taille_lue = fread(&(entete->e_shentsize), sizeof(Elf32_Half), 1, fichier);
 	assert(sizeof(Elf32_Half) == taille_lue);
 	
 	// lire e_shnum
-    taille_lue = fread(entete->e_shnum, sizeof(Elf32_Half), 1, fichier);
+    taille_lue = fread(&(entete->e_shnum), sizeof(Elf32_Half), 1, fichier);
 	assert(sizeof(Elf32_Half) == taille_lue);
 
 	// lire e_shstrndx
-    taille_lue = fread(entete->e_shstrndx, sizeof(Elf32_Half), 1, fichier);
+    taille_lue = fread(&(entete->e_shstrndx), sizeof(Elf32_Half), 1, fichier);
 	assert(sizeof(Elf32_Half) == taille_lue);
 
 	return (erreur_t)SUCCESS;
@@ -81,7 +87,7 @@ void affiche_header(Elf32_Ehdr entete) {
     printf("\n");
 
      //---------------EI_CLASS----------
-    printf("  Class:\t\t\t\t\t");
+    printf("  Class:\t\t\t\t");
     if(entete.e_ident[EI_CLASS] == ELFCLASS32){
         printf("ELF32\n");
     } else {
@@ -95,20 +101,20 @@ void affiche_header(Elf32_Ehdr entete) {
     } else if(entete.e_ident[EI_DATA] == ELFDATA2MSB)  {
         printf("2's complement, big endian\n");
     } else {
-		assert(ELFDATANONE == entete.e_indent[EI_DATA]);
+		assert(ELFDATANONE == entete.e_ident[EI_DATA]);
         printf("Invalid data encoding\n");
     }
 	
     //---------------EI_VERSION----------
-    printf("  Version:\t\t\t\t\n");
-	if (entete.e_indent[EI_VERSION] == EV_CURRENT) {
+    printf("  Version:\t\t\t\t");
+	if (entete.e_ident[EI_VERSION] == EV_CURRENT) {
 		printf("1 (current)\n");
 	} else {
 		printf("invalid versionn\n");
 	}
 
     //----------------e_type----------
-    printf("  Type:\t\t\t\t ");
+    printf("  Type:\t\t\t\t\t");
 	switch (entete.e_type) {
 		case ET_REL :
 			printf("Relocatable file\n");
@@ -133,7 +139,7 @@ void affiche_header(Elf32_Ehdr entete) {
 			assert(0 == entete.e_type);
 	}
     //----------------e_machine----------
-	printf("  Machine:\t\t\t\t ");
+	printf("  Machine:\t\t\t\t");
 	switch (entete.e_machine) {
 		case ET_NONE :
 			printf("No machine\n");
@@ -163,14 +169,15 @@ void affiche_header(Elf32_Ehdr entete) {
 			printf("MIPS RS4000 Big-Endian\n");
 			break;
 		default:
-			printf("Reserved value [%04x\n]", entete.e_machine);
+			printf("Reserved value [%04x]\n", entete.e_machine);
 	}
 
+
     //----------------e_version----------
-	printf("  Version:\t\t\t\t%1x\n", entete.e_version);
+	printf("  Version:\t\t\t\t0x%x\n", entete.e_version);
 
     //----------------Le Reste----------
-    printf("  Entry point address:\t\t\t%2x\n", entete.e_entry);
+    printf("  Entry point address:\t\t\t%2ls\n", entete.e_entry);
     printf("  Start of program headers:\t\t%d (bytes into file)\n", entete.e_phoff);
     printf("  Start of section headers:\t\t%d (bytes into file)\n", entete.e_shoff);
     printf("  Flags:\t\t\t\t%x (bytes into file)\n", entete.e_flags);
@@ -180,7 +187,5 @@ void affiche_header(Elf32_Ehdr entete) {
     printf("  Size of section headers:\t\t%d(bytes)\n", entete.e_shentsize);
     printf("  Number of section headers:\t\t%d\n", entete.e_shnum);
     printf("  Section header string table index:\t%d\n", entete.e_shstrndx);
-
-    return SUCCES;
 }
 

@@ -13,3 +13,6 @@ Examples_loader/stamp-h1
 Makefile
 *.status
 *.cache/
+README.txt
+main
+my_test_affichages
