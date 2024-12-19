@@ -5,7 +5,7 @@
 
 #include "util.h"
 #include "my_elf.h"
-
+#include <linux/elf-em.h>
 
 
 void swap_endian(Elf32_Ehdr *entete) {
@@ -94,7 +94,7 @@ erreur_t read_header(FILE *fichier, Elf32_Ehdr *entete) {
 
 
 void affiche_header(Elf32_Ehdr entete) {
-	printf("we are in %s endian\n", is_big_endian() ? "big" : "small");
+	printf("we are in %s endian\n", is_big_endian() ? "big" : "little");
 
     printf("ELF header:\n");
     printf("  Magic:    ");
