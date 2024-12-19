@@ -65,19 +65,19 @@
 
 typedef struct {
 	unsigned char e_ident[EI_NIDENT];
-	Elf32_Half e_type;
-	Elf32_Half e_machine;
-	Elf32_Word e_version;
-	Elf32_Addr e_entry;
-	Elf32_Off e_phoff;
-	Elf32_Off e_shoff;
-	Elf32_Word e_flags;
-	Elf32_Half e_ehsize;
-	Elf32_Half e_phentsize;
-	Elf32_Half e_phnum;
-	Elf32_Half e_shentsize;
-	Elf32_Half e_shnum;
-	Elf32_Half e_shstrndx;
+	Elf32_Half e_type		;
+	Elf32_Half e_machine	;
+	Elf32_Word e_version	;
+	Elf32_Addr e_entry		;
+	Elf32_Off  e_phoff		;
+	Elf32_Off  e_shoff		;
+	Elf32_Word e_flags		;
+	Elf32_Half e_ehsize		;
+	Elf32_Half e_phentsize	;
+	Elf32_Half e_phnum		;
+	Elf32_Half e_shentsize	;
+	Elf32_Half e_shnum		;
+	Elf32_Half e_shstrndx	;
 } Elf32_Ehdr;
 
 
@@ -103,7 +103,35 @@ erreur_t read_header(FILE* f, Elf32_Ehdr *entete);
 
 
 
-/*--- Interfaces Acces --*/
+
+
+
+/*--- Interfaces Affichage --*/
+
+/*
+   affiche_en_tete_elf
+   description : affiche l'entete donnee
+   paramètres : l'entete que l'on souhaite afficher
+   valeur de retour : aucune
+   effets de bord : affiche sur la sortie standard
+*/
+void affiche_header(Elf32_Ehdr entete);
+
+
+
+/*--- Autre --*/
+
+
+/*
+	swap_endian
+	description : inverse l'endianess des valeurs de l'entete donnee
+	paramètres : entete
+	valeur de retour : aucune
+	effet de bord : modifie la structure	
+*/
+void swap_endian(Elf32_Ehdr *entete);
+
+
 
 
 /* On pourra les implémenter éventuellement si pertinents...
@@ -126,16 +154,7 @@ Elf32_Half get_shstrndx(Elf32_Ehdr entete);
 
 
 
-/*--- Interfaces Affichage --*/
 
-/*
-   affiche_en_tete_elf
-   description : affiche l'entete donnee
-   paramètres : l'entete que l'on souhaite afficher
-   valeur de retour : aucune
-   effets de bord : affiche sur la sortie standard
-*/
-void affiche_header(Elf32_Ehdr entete);
 
 
 
