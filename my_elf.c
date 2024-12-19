@@ -203,7 +203,7 @@ void affiche_header(Elf32_Ehdr entete) {
     printf("  Start of section headers:\t\t%d (bytes into file)\n", entete.e_shoff);
     printf("  Flags:\t\t\t\t0x%x\n", entete.e_flags);
     printf("  Size of this header:\t\t\t%d (bytes)\n", entete.e_ehsize);
-    printf("  Size of program headers:\t\t%x (bytes)\n", entete.e_phentsize);
+    printf("  Size of program headers:\t\t%d (bytes)\n", entete.e_phentsize);
     printf("  Number of program headers:\t\t%d\n", entete.e_phnum);
     printf("  Size of section headers:\t\t%d (bytes)\n", entete.e_shentsize);
     printf("  Number of section headers:\t\t%d\n", entete.e_shnum);
