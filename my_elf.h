@@ -8,7 +8,7 @@
 
 /* TYPES */
 
-#define	Elf32_Addr uint32_t*	//unsigned program address
+#define	Elf32_Addr uint32_t		//unsigned program address
 #define	Elf32_Half uint16_t		//unsigned medium integer
 #define	Elf32_Off uint32_t		//unsigned file offset 
 #define	Elf32_Sword int32_t		//signed large integer

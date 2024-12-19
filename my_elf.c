@@ -2,16 +2,14 @@
 #include <stdlib.h>
 //#define NDEBUG 
 #include <assert.h>
+
 #include "util.h"
 #include "my_elf.h"
 
-#define MEMORYFAIL 4
-
-
 
 erreur_t read_header(FILE *fichier, Elf32_Ehdr *entete) {
-	assert(fichier);	//le fichier doit etre ouvert en lecture bit a bit
-	assert(entete);		//l'entete doit etre un pointeur valide
+	assert(fichier);	// le fichier doit etre ouvert en lecture bit a bit
+	assert(entete);		// l'entete doit etre un pointeur valide
 
     size_t taille_lue;	// utilisee pour verifier le nombre d'octets lues
 
@@ -32,7 +30,7 @@ erreur_t read_header(FILE *fichier, Elf32_Ehdr *entete) {
     // lire e_version
     taille_lue = fread(&(entete->e_version), sizeof(Elf32_Word), 1, fichier);
 	assert(sizeof(Elf32_Word) == taille_lue);
-	printf("%ld\n",taille_lue);
+	//printf("taille_lue e_version: %ld\n",taille_lue);
 
 	// lire e_entry
     taille_lue = fread(&(entete->e_entry), sizeof(Elf32_Addr), 1, fichier);
@@ -177,7 +175,7 @@ void affiche_header(Elf32_Ehdr entete) {
 	printf("  Version:\t\t\t\t0x%x\n", entete.e_version);
 
     //----------------Le Reste----------
-    printf("  Entry point address:\t\t\t%2ls\n", entete.e_entry);
+    printf("  Entry point address:\t\t\t%d\n", entete.e_entry);
     printf("  Start of program headers:\t\t%d (bytes into file)\n", entete.e_phoff);
     printf("  Start of section headers:\t\t%d (bytes into file)\n", entete.e_shoff);
     printf("  Flags:\t\t\t\t%x (bytes into file)\n", entete.e_flags);
