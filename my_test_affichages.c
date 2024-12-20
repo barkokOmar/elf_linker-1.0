@@ -13,6 +13,8 @@ int main (int argc, char *argv[]){
     read_header(fichier, &entete);
     affiche_header(entete);
 
+    read_shtable(fichier, &entete);
+
     fclose(fichier);
     return 0;
 }

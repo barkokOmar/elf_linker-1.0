@@ -6,6 +6,7 @@
 
 
 
+
 /*--- Interfaces Lecture --*/
 
 /*
@@ -17,8 +18,11 @@
    effets de bord : modifie la structure entete donnee en argument de fonction
 */
 int read_header(FILE* f, Elf32_Ehdr *entete);
-void read_section_names(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_headers);
-Elf32_Shdr read_section_headers(FILE *file, Elf32_Ehdr *header);
+
+/* read_shtable : reads and return a section headers table */
+Elf32_Shdr *read_shtable(FILE *file, Elf32_Ehdr *header);
+
+void read_shnames(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_headers);
 
 
 /*--- Interfaces Affichage --*/
