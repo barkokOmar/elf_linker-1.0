@@ -140,16 +140,17 @@ void affiche_header(Elf32_Ehdr entete) {
 			printf("Relocatable file\n");
 			break;
 		case ET_EXEC :
-			printf("EXEC (Executable file)\n");
+		case EM_68K : 
+			printf("Motorola 68000\n");
 			break;
-		case ET_DYN :
-			printf("Shared object file\n");
+		case EM_88K : 
+			printf("Motorola 88000\n");
 			break;
-		case ET_CORE :
-			printf("Core file\n");
+		case EM_860 : 
+			printf("Intel 80860\n");
 			break;
-		case ET_LOPROC:
-			printf("Processor-specific (LOPROC)\n");
+		case EM_MIPS : 
+			printf("MIPS RS3000 Big-Endian\n");
 			break;
 		case ET_HIPROC :
 			printf("Processor-specific (HIPROC)\n");
@@ -206,36 +207,38 @@ void affiche_header(Elf32_Ehdr entete) {
 }
 
 
-Elf32_Shdr read_section_headers(FILE *file, Elf32_Ehdr *header){
-	fseek(file, header->e_shoff, SEEK_SET);
+Elf32_Shdr *read_shtable(FILE *file, Elf32_Ehdr *elfhdr) {
+	assert(file);
+	assert(elfhdr);
 
-	Elf32_Shdr *section_headers = malloc(header->e_shnum * sizeof(Elf32_Shdr));
-	if (!section_headers){
-		perreur("Erreur dans l'allocation de memoire pour Section Headers");
-		exit(1);
-	}
+	Elf32_Half taille_shtable = get_shnum(elfhdr);
 
-	if (fread(section_headers, sizeof(Elf32_Shdr), header->e_shnum, file) != header->e_shnum){
+	fseek(file, get_shoff(elfhdr), SEEK_SET);
+
+	Elf32_Shdr *shtable = (Elf32_Shdr*)malloc(sizeof(Elf32_Shdr) * taille_shtable);
+	assert(shtable);
+
+	if (fread(shtable, sizeof(Elf32_Shdr), elfhdr->e_shnum, file) != elfhdr->e_shnum) {
 		perror("Erreur dans la lecture de Section Header");
 		exit(1);
 	}
 
 	printf("Section Headres:\n");
-	for (int i = 0; i < header->e_shnum; i++){
+	for (int i = 0; i < elfhdr->e_shnum; i++){
 		printf("Section %d:\n", i);
-		printf("	Name: %u\n", section_headers[i].sh_name);
-		printf("	Type: %u\n", section_headers[i].sh_type);
-		printf("	Adresse: 0x%x\n", section_headers[i].sh_addr);
-		printf("	Offset: 0x%x\n", section_headers[i].sh_offset);
-		printf("	Size:	%u\n", section_headers[i].sh_size);
+		printf("	Name: %u\n", shtable[i].sh_name);
+		printf("	Type: %u\n", shtable[i].sh_type);
+		printf("	Adresse: 0x%x\n", shtable[i].sh_addr);
+		printf("	Offset: 0x%x\n", shtable[i].sh_offset);
+		printf("	Size:	%u\n", shtable[i].sh_size);
 	}
 
-	return *section_headers;
+	return shtable;
 }
 
-void read_section_names(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_headers) {
+void read_shnames(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *shtable) {
 	
-	Elf32_Shdr shstrtab = section_headers[header->e_shstrndx];
+	Elf32_Shdr shstrtab = shtable[header->e_shstrndx];
 
 	char *shstrtab_data = malloc(shstrtab.sh_size);
 	if (!shstrtab_data){
@@ -252,7 +255,7 @@ void read_section_names(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_head
 
 	printf("Section Names:\n");
 	for(int i = 0; i < header->e_shnum; i++){
-		printf("Section %d: %s\n", i, &shstrtab_data[section_headers[i].sh_name]);
+		printf("Section %d: %s\n", i, &shstrtab_data[shtable[i].sh_name]);
 	}
 	free(shstrtab_data);
 }
