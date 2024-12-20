@@ -2,15 +2,13 @@
 #include <stdlib.h>
 //#define NDEBUG		// commenter ce define pour activer les assert à la compilation
 #include <assert.h>
-
 #include <elf.h>
 
 #include "util.h"
 #include "my_elf.h"
-#include <linux/elf-em.h>
 
 
-void swap_endian(Elf32_Ehdr *entete) {
+void swap_endianess(Elf32_Ehdr *entete) {
 	assert(entete);
 	entete->e_type		 = reverse_2(entete->e_type);
 	entete->e_machine	 = reverse_2(entete->e_machine);
@@ -28,70 +26,69 @@ void swap_endian(Elf32_Ehdr *entete) {
 }
 
 
-erreur_t read_header(FILE *fichier, Elf32_Ehdr *entete) {
+/* lie le bon nombre d'octets selon la taille du type */
+int read_Half(void *ptr, FILE *stream) {
+	assert(ptr);
+	int taille_lue = fread(ptr, 1, sizeof(Elf32_Half), stream);
+	assert(taille_lue == sizeof(Elf32_Half));
+	return taille_lue;
+}
+int read_Word(void *ptr, FILE *stream) {
+	assert(ptr);
+	int taille_lue = fread(ptr, 1, sizeof(Elf32_Word), stream);
+	assert(taille_lue == sizeof(Elf32_Word));
+	return taille_lue;
+}
+int read_Addr(void *ptr, FILE *stream) {
+	assert(ptr);
+	int taille_lue = fread(ptr, 1, sizeof(Elf32_Addr), stream);
+	assert(taille_lue == sizeof(Elf32_Addr));
+	return taille_lue;
+}
+int read_Off(void *ptr, FILE *stream) {
+	assert(ptr);
+	int taille_lue = fread(ptr, 1, sizeof(Elf32_Off), stream);
+	assert(taille_lue == sizeof(Elf32_Off));
+	return taille_lue;
+}
+int read_Sword(void *ptr, FILE *stream) {
+	assert(ptr);
+	int taille_lue = fread(ptr, 1, sizeof(Elf32_Sword), stream);
+	assert(taille_lue == sizeof(Elf32_Sword));
+	return taille_lue;
+}
+
+
+int read_header(FILE *fichier, Elf32_Ehdr *entete) {
 	assert(fichier);	// le fichier doit etre ouvert en lecture bit a bit
 	assert(entete);		// l'entete doit etre un pointeur valide
 
-    size_t taille_lue;	// utilisee pour verifier le nombre d'octets lues
-	taille_lue = 0;
+	int taille_lue = 0;
 
-    // lire les 16 premier octets pour elf identification
-    taille_lue = fread(&(entete->e_ident), sizeof(unsigned char), EI_NIDENT, fichier);
+    // lecture des 16 premiers octets (e_ident)
+    taille_lue += fread(&(entete->e_ident), sizeof(unsigned char), EI_NIDENT, fichier);
     assert(sizeof(unsigned char)*EI_NIDENT == taille_lue);
 
-    // lire e_type
-    taille_lue = fread(&(entete->e_type), 1, sizeof(Elf32_Half), fichier);
-	assert(sizeof(Elf32_Half) == taille_lue);
+	// lecture du reste de l'entete
+	taille_lue += read_Half(&(entete->e_type), fichier);
+	taille_lue += read_Half(&(entete->e_machine), fichier);
+	taille_lue += read_Word(&(entete->e_version), fichier);
+	taille_lue += read_Addr(&(entete->e_entry), fichier);
+	taille_lue += read_Off(&(entete->e_phoff), fichier);
+	taille_lue += read_Off(&(entete->e_shoff), fichier);
+	taille_lue += read_Word(&(entete->e_flags), fichier);
+	taille_lue += read_Half(&(entete->e_ehsize), fichier);
+	taille_lue += read_Half(&(entete->e_phentsize), fichier);
+	taille_lue += read_Half(&(entete->e_phnum), fichier);
+	taille_lue += read_Half(&(entete->e_shentsize), fichier);
+	taille_lue += read_Half(&(entete->e_shnum), fichier);
+	taille_lue += read_Half(&(entete->e_shstrndx), fichier);
 
-	// lire e_machine
-    taille_lue = fread(&(entete->e_machine), 1, sizeof(Elf32_Half), fichier);
-	assert(sizeof(Elf32_Half) == taille_lue);
+	if (!is_big_endian()) {
+		swap_endianess(entete);
+	}
 
-    // lire e_version
-    taille_lue = fread(&(entete->e_version), 1, sizeof(Elf32_Word), fichier);
-	assert(sizeof(Elf32_Word) == taille_lue);
-
-	// lire e_entry
-    taille_lue = fread(&(entete->e_entry), 1, sizeof(Elf32_Addr), fichier);
-	assert(sizeof(Elf32_Addr) == taille_lue);
-	
-	// lire e_phoff
-    taille_lue = fread(&(entete->e_phoff), 1, sizeof(Elf32_Off), fichier);
-	assert(sizeof(Elf32_Off) == taille_lue);
-	
-    // lire e_shoff 
-    taille_lue = fread(&(entete->e_shoff), 1, sizeof(Elf32_Off), fichier);
-	assert(sizeof(Elf32_Off) == taille_lue);
-
-	// lire e_flags
-    taille_lue = fread(&(entete->e_flags), 1, sizeof(Elf32_Word), fichier);
-	assert(sizeof(Elf32_Word) == taille_lue);
-
-    // lire e_ehsize
-    taille_lue = fread(&(entete->e_ehsize), 1, sizeof(Elf32_Half), fichier);
-	assert(sizeof(Elf32_Half) == taille_lue);
-
-	// lire e_phentisize
-    taille_lue = fread(&(entete->e_phentsize), 1, sizeof(Elf32_Half), fichier);
-	assert(sizeof(Elf32_Half) == taille_lue);
-	
-	// lire e_phnum
-    taille_lue = fread(&(entete->e_phnum), 1, sizeof(Elf32_Half), fichier);
-	assert(sizeof(Elf32_Half) == taille_lue);
-
-	// lire e_shentsize
-    taille_lue = fread(&(entete->e_shentsize), 1, sizeof(Elf32_Half), fichier);
-	assert(sizeof(Elf32_Half) == taille_lue);
-	
-	// lire e_shnum
-    taille_lue = fread(&(entete->e_shnum), 1, sizeof(Elf32_Half), fichier);
-	assert(sizeof(Elf32_Half) == taille_lue);
-
-	// lire e_shstrndx
-    taille_lue = fread(&(entete->e_shstrndx), 1, sizeof(Elf32_Half), fichier);
-	assert(sizeof(Elf32_Half) == taille_lue);
-
-	return (erreur_t)SUCCESS;		// pour l'instant ca sert à rien
+	return taille_lue;
 }
 
 
@@ -105,7 +102,7 @@ void affiche_header(Elf32_Ehdr entete) {
     }
     printf("\n");
 
-     //---------------EI_CLASS----------
+    //---------------EI_CLASS----------
     printf("  Class:\t\t\t\t");
     if(entete.e_ident[EI_CLASS] == ELFCLASS32){
         printf("ELF32\n");
@@ -115,14 +112,14 @@ void affiche_header(Elf32_Ehdr entete) {
 
     //---------------EI_DATA----------
     printf("  Data:\t\t\t\t\t");
-    if(entete.e_ident[EI_DATA] == ELFDATA2LSB){
+    if (entete.e_ident[EI_DATA] == ELFDATA2LSB) {
         printf("2's complement, little endian\n");
-		if (is_big_endian())
-			swap_endian(&entete);	
-    } else if(entete.e_ident[EI_DATA] == ELFDATA2MSB)  {
+    } else if (entete.e_ident[EI_DATA] == ELFDATA2MSB) {
         printf("2's complement, big endian\n");
-		if (!is_big_endian())
-			swap_endian(&entete);
+		/*
+		if (!is_big_endian())	// ici on aura swap alors qu'elles sont déjà dans le bon boutisme...
+			swap_endianess(&entete);
+		*/
     } else {
 		assert(ELFDATANONE == entete.e_ident[EI_DATA]);
         printf("Invalid data encoding\n");
@@ -159,7 +156,6 @@ void affiche_header(Elf32_Ehdr entete) {
 			break;
 		default:
 			printf("No file type (should be 0, actual value: [0x%04x] )\n", reverse_2(entete.e_type));
-			//assert(0 == entete.e_type);
 	}
     //----------------e_machine----------
 	printf("  Machine:\t\t\t\t");
@@ -188,9 +184,6 @@ void affiche_header(Elf32_Ehdr entete) {
 		case EM_MIPS : 
 			printf("MIPS RS3000 Big-Endian\n");
 			break;
-		case EM_MIPS_RS4_BE : 
-			printf("MIPS RS4000 Big-Endian\n");
-			break;
 		default:
 			printf("Reserved value [0x%04x]\n", entete.e_machine);
 	}
@@ -211,6 +204,7 @@ void affiche_header(Elf32_Ehdr entete) {
     printf("  Number of section headers:\t\t%d\n", entete.e_shnum);
     printf("  Section header string table index:\t%d\n", entete.e_shstrndx);
 }
+
 
 Elf32_Shdr read_section_headers(FILE *file, Elf32_Ehdr *header){
 	fseek(file, header->e_shoff, SEEK_SET);
@@ -239,7 +233,7 @@ Elf32_Shdr read_section_headers(FILE *file, Elf32_Ehdr *header){
 	return *section_headers;
 }
 
-void read_section_names(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_headers){
+void read_section_names(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_headers) {
 	
 	Elf32_Shdr shstrtab = section_headers[header->e_shstrndx];
 
@@ -261,4 +255,72 @@ void read_section_names(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_head
 		printf("Section %d: %s\n", i, &shstrtab_data[section_headers[i].sh_name]);
 	}
 	free(shstrtab_data);
+}
+
+
+
+
+Elf32_Half get_type(Elf32_Ehdr *entete) { 
+    assert(entete != NULL);
+    return entete->e_type; 
+}
+
+Elf32_Half get_machine(Elf32_Ehdr *entete) { 
+    assert(entete != NULL);
+    return entete->e_machine; 
+}
+
+Elf32_Word get_version(Elf32_Ehdr *entete) { 
+    assert(entete != NULL);
+    return entete->e_version; 
+}
+
+Elf32_Addr get_entry(Elf32_Ehdr *entete) { 
+    assert(entete != NULL);
+    return entete->e_entry; 
+}
+
+Elf32_Off get_phoff(Elf32_Ehdr *entete) { 
+    assert(entete != NULL);
+    return entete->e_phoff; 
+}
+
+Elf32_Off get_shoff(Elf32_Ehdr *entete) { 
+    assert(entete != NULL);
+    return entete->e_shoff; 
+}
+
+Elf32_Word get_flags(Elf32_Ehdr *entete) { 
+    assert(entete != NULL);
+    return entete->e_flags; 
+}
+
+Elf32_Half get_ehsize(Elf32_Ehdr *entete) { 
+    assert(entete != NULL);
+    return entete->e_ehsize; 
+}
+
+Elf32_Half get_phentsize(Elf32_Ehdr *entete) { 
+    assert(entete != NULL);
+    return entete->e_phentsize; 
+}
+
+Elf32_Half get_phnum(Elf32_Ehdr *entete) { 
+    assert(entete != NULL);
+    return entete->e_phnum; 
+}
+
+Elf32_Half get_shentsize(Elf32_Ehdr *entete) { 
+    assert(entete != NULL);
+    return entete->e_shentsize; 
+}
+
+Elf32_Half get_shnum(Elf32_Ehdr *entete) { 
+    assert(entete != NULL);
+    return entete->e_shnum; 
+}
+
+Elf32_Half get_shstrndx(Elf32_Ehdr *entete) { 
+    assert(entete != NULL);
+    return entete->e_shstrndx; 
 }

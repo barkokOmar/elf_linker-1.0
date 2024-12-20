@@ -1,1 +1,11 @@
 Custom ELF Loader intended for pedagogic use
+
+
+#pour les erreurs de compilation (probablement liées aux outils automake/autoconf):
+
+(voir section 3.3.4 du sujet du projet)
+pour resourdre les problèmes, essayer: 
+
+1. make distclean
+2. autoreconf -vif
+3. for dir in Examples *; do autoreconf -vif $dir; done

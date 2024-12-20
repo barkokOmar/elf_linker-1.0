@@ -1,14 +1,9 @@
-#ifndef __mon_elf__
-#define __mon_elf__
+#ifndef __my_elf__
+#define __my_elf__
 
 #include <elf.h>
 #include <stdint.h>
 
-
-typedef enum {
-	FAIL = 0,
-	SUCCESS = 1
-} erreur_t ;
 
 
 /*--- Interfaces Lecture --*/
@@ -18,10 +13,12 @@ typedef enum {
    description : lit l'entete d'un fichier ELF
    paramètres : un fichier ELF precedemment ouvert en lecture bit a bit, l'adresse de 
    				la structure entete ou on souhaite stocker le resultat de la lecture
-   valeur de retour : SUCCESS si tout se passe bien, FAIL sinon
+   valeur de retour : nombre d'octets correctement lus
    effets de bord : modifie la structure entete donnee en argument de fonction
 */
-erreur_t read_header(FILE* f, Elf32_Ehdr *entete);
+int read_header(FILE* f, Elf32_Ehdr *entete);
+void read_section_names(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_headers);
+Elf32_Shdr read_section_headers(FILE *file, Elf32_Ehdr *header);
 
 
 /*--- Interfaces Affichage --*/
@@ -40,33 +37,27 @@ void affiche_header(Elf32_Ehdr entete);
 
 /*
 	swap_endian
-	description : inverse l'endianess des valeurs de l'entete donnee
+	description : inverse l'endianess des valeurs de l'entete 
 	paramètres : entete
 	valeur de retour : aucune
 	effet de bord : modifie la structure	
 */
-void swap_endian(Elf32_Ehdr *entete);
+void swap_endianess(Elf32_Ehdr *entete);
 
 
-/* On pourra les implémenter éventuellement si pertinents...
-unsigned char* get_indent(Elf32_Ehdr entete);
-Elf32_Half get_type(Elf32_Ehdr entete);
-Elf32_Half get_machine(Elf32_Ehdr entete);
-Elf32_Word get_version(Elf32_Ehdr entete);
-Elf32_Addr get_entry(Elf32_Ehdr entete);
-Elf32_Off get_phoff(Elf32_Ehdr entete);
-Elf32_Off get_shoff(Elf32_Ehdr entete);
-Elf32_Word get_flags(Elf32_Ehdr entete);
-Elf32_Half get_ehsize(Elf32_Ehdr entete);
-Elf32_Half get_phentsize(Elf32_Ehdr entete);
-Elf32_Half get_phnum(Elf32_Ehdr entete);
-Elf32_Half get_shentsize(Elf32_Ehdr entete);
-Elf32_Half get_shnum(Elf32_Ehdr entete);
-Elf32_Half get_shstrndx(Elf32_Ehdr entete);
-*/
+Elf32_Half get_type(Elf32_Ehdr *entete);
+Elf32_Half get_machine(Elf32_Ehdr *entete);
+Elf32_Word get_version(Elf32_Ehdr *entete);
+Elf32_Addr get_entry(Elf32_Ehdr *entete);
+Elf32_Off get_phoff(Elf32_Ehdr *entete);
+Elf32_Off get_shoff(Elf32_Ehdr *entete);
+Elf32_Word get_flags(Elf32_Ehdr *entete);
+Elf32_Half get_ehsize(Elf32_Ehdr *entete);
+Elf32_Half get_phentsize(Elf32_Ehdr *entete);
+Elf32_Half get_phnum(Elf32_Ehdr *entete);
+Elf32_Half get_shentsize(Elf32_Ehdr *entete);
+Elf32_Half get_shnum(Elf32_Ehdr *entete);
+Elf32_Half get_shstrndx(Elf32_Ehdr *entete);
 
-Elf32_Shdr read_section_headers(FILE *file, Elf32_Ehdr *header);
-
-void read_section_names(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_headers);
 
 #endif

@@ -1,1 +1,44 @@
-*.o 
+# Ignore Automake generated files
+Makefile
+Makefile.in
+config.h
+config.h.in
+aclocal.m4
+compile
+config.log
+config.status
+depcomp
+install-sh
+ltmain.sh
+missing
+
+# Ignore build artifacts
+*.o
+*.lo
+*.la
+*.so
+
+# Ignore Automake cache
+autom4te.cache/
+
+# Ignore build directories
+/build/
+/dist/
+
+# Other
+my_test_affichages
+*.swp
+.deps/
+ARM_runner_example
+Examples_loader/example?
+Examples_loader/stamp-h1
+.vscode
+
+Makefile.in
+aclocal.m4
+build-aux/compile
+build-aux/depcomp
+build-aux/install-sh
+build-aux/missing
+build-aux/ylwrap
+

@@ -25,5 +25,6 @@ Contact: Guillaume.Huard@imag.fr
 
 int is_big_endian() {
     static uint32_t one = 1;
+    
     return ((* (uint8_t *) &one) == 0);
 }
