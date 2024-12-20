@@ -33,3 +33,13 @@ ARM_runner_example
 Examples_loader/example?
 Examples_loader/stamp-h1
 .vscode
+
+Makefile.in
+aclocal.m4
+build-aux/compile
+build-aux/depcomp
+build-aux/install-sh
+build-aux/missing
+build-aux/ylwrap
+configure
+
