@@ -6,8 +6,6 @@
 
 #include "util.h"
 #include "my_elf.h"
-
-
 void swap_endianess(Elf32_Ehdr *entete) {
 	assert(entete);
 	entete->e_type		 = reverse_2(entete->e_type);
@@ -140,17 +138,16 @@ void affiche_header(Elf32_Ehdr entete) {
 			printf("Relocatable file\n");
 			break;
 		case ET_EXEC :
-		case EM_68K : 
-			printf("Motorola 68000\n");
+			printf("EXEC (Executable file)\n");
 			break;
-		case EM_88K : 
-			printf("Motorola 88000\n");
+		case ET_DYN :
+			printf("Shared object file\n");
 			break;
-		case EM_860 : 
-			printf("Intel 80860\n");
+		case ET_CORE :
+			printf("Core file\n");
 			break;
-		case EM_MIPS : 
-			printf("MIPS RS3000 Big-Endian\n");
+		case ET_LOPROC:
+			printf("Processor-specific (LOPROC)\n");
 			break;
 		case ET_HIPROC :
 			printf("Processor-specific (HIPROC)\n");
@@ -205,7 +202,52 @@ void affiche_header(Elf32_Ehdr entete) {
     printf("  Number of section headers:\t\t%d\n", entete.e_shnum);
     printf("  Section header string table index:\t%d\n", entete.e_shstrndx);
 }
+///////////////////////////////////////////////////////////////////
+void swap_endianess_section_table(Elf32_Shdr *shtable) {
+	assert(shtable);
+	shtable->sh_name = reverse_4(shtable->sh_name);
+	shtable->sh_type = reverse_4(shtable->sh_type);
+	shtable->sh_flags = reverse_4(shtable->sh_flags);
+	shtable->sh_addr = reverse_4(shtable->sh_addr);
+	shtable->sh_offset = reverse_4(shtable->sh_offset);
+	shtable->sh_size = reverse_4(shtable->sh_size);
+}
 
+const char* get_section_type(uint32_t type) {
+    switch (type) {
+        case SHT_NULL: return "NULL";
+        case SHT_PROGBITS: return "PROGBITS";
+        case SHT_SYMTAB: return "SYMTAB";
+        case SHT_STRTAB: return "STRTAB";
+        case SHT_RELA: return "RELA";
+        case SHT_HASH: return "HASH";
+        case SHT_DYNAMIC: return "DYNAMIC";
+        case SHT_NOTE: return "NOTE";
+        case SHT_NOBITS: return "NOBITS";
+        case SHT_REL: return "REL";
+        case SHT_SHLIB: return "SHLIB";
+        case SHT_DYNSYM: return "DYNSYM";
+        default: return "UNKNOWN";
+    }
+}
+
+void read_shnames(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *shtable,char **shstrtab_data) { 
+	
+	Elf32_Shdr shstrtab = shtable[header->e_shstrndx];
+
+	*shstrtab_data = malloc(shstrtab.sh_size);
+	if (!shstrtab_data){
+		perror("Erreur d'allocation de memoire pour Section Names");
+		exit(1);
+	}
+
+	fseek(file, shstrtab.sh_offset, SEEK_SET);
+	if(fread(*shstrtab_data, 1, shstrtab.sh_size, file) != shstrtab.sh_size){
+		perror("Erreur de lecture pour Section Name String Table");
+		free(*shstrtab_data);
+		exit(1);
+	}
+}
 
 Elf32_Shdr *read_shtable(FILE *file, Elf32_Ehdr *elfhdr) {
 	assert(file);
@@ -218,51 +260,27 @@ Elf32_Shdr *read_shtable(FILE *file, Elf32_Ehdr *elfhdr) {
 	Elf32_Shdr *shtable = (Elf32_Shdr*)malloc(sizeof(Elf32_Shdr) * taille_shtable);
 	assert(shtable);
 
-	if (fread(shtable, sizeof(Elf32_Shdr), elfhdr->e_shnum, file) != elfhdr->e_shnum) {
+	if (fread(shtable, sizeof(Elf32_Shdr), taille_shtable, file) != taille_shtable) {
 		perror("Erreur dans la lecture de Section Header");
 		exit(1);
 	}
-
-	printf("Section Headres:\n");
-	for (int i = 0; i < elfhdr->e_shnum; i++){
-		printf("Section %d:\n", i);
-		printf("	Name: %u\n", shtable[i].sh_name);
-		printf("	Type: %u\n", shtable[i].sh_type);
-		printf("	Adresse: 0x%x\n", shtable[i].sh_addr);
-		printf("	Offset: 0x%x\n", shtable[i].sh_offset);
-		printf("	Size:	%u\n", shtable[i].sh_size);
+	char *shstrtab_data;    
+    for (int i = 0; i < elfhdr->e_shnum; i++) {
+        if (!is_big_endian()) {
+		swap_endianess_section_table(&shtable[i]);
+	    }
 	}
+    printf("Section Headers:\n");
+    printf("  [Nr]   Name              Type            Addr        Off       Size\n");    
+	for (int i = 0; i < elfhdr->e_shnum; i++) {
+		read_shnames(file,elfhdr,shtable,&shstrtab_data);
+		printf("  [%-3d] %-18s %-15s 0x%-10x 0x%-8x 0x%-8x\n",i, 
+			&shstrtab_data[shtable[i].sh_name],get_section_type(shtable[i].sh_type),shtable[i].sh_addr,shtable[i].sh_offset,shtable[i].sh_size
+		);
+    }
 
 	return shtable;
 }
-
-void read_shnames(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *shtable) {
-	
-	Elf32_Shdr shstrtab = shtable[header->e_shstrndx];
-
-	char *shstrtab_data = malloc(shstrtab.sh_size);
-	if (!shstrtab_data){
-		perror("Erruer d'allocation de memoire pour Section Names");
-		exit(1);
-	}
-
-	fseek(file, shstrtab.sh_offset, SEEK_SET);
-	if(fread(shstrtab_data, 1, shstrtab.sh_size, file) != shstrtab.sh_size){
-		perror("Erreur de lecture pour Section Name String Table");
-		free(shstrtab_data);
-		exit(1);
-	}
-
-	printf("Section Names:\n");
-	for(int i = 0; i < header->e_shnum; i++){
-		printf("Section %d: %s\n", i, &shstrtab_data[shtable[i].sh_name]);
-	}
-	free(shstrtab_data);
-}
-
-
-
-
 Elf32_Half get_type(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_type; 

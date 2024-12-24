@@ -19,16 +19,16 @@
 */
 int read_header(FILE* f, Elf32_Ehdr *entete);
 
-/* read_shtable : reads and return a section headers table */
+/* read_shtable : reads and returns a section headers table */
 Elf32_Shdr *read_shtable(FILE *file, Elf32_Ehdr *header);
 
-void read_shnames(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_headers);
+void read_shnames(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_headers,char **shstrtab_data);
 
 
 /*--- Interfaces Affichage --*/
 
 /*
-   affiche_en_tete_elf
+   affiche_header
    description : affiche l'entete donnee
    paramètres : l'entete que l'on souhaite afficher
    valeur de retour : aucune
@@ -36,17 +36,17 @@ void read_shnames(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_headers);
 */
 void affiche_header(Elf32_Ehdr entete);
 
-
 /*--- Autre --*/
 
 /*
-	swap_endian
+	swap_endianess
 	description : inverse l'endianess des valeurs de l'entete 
 	paramètres : entete
 	valeur de retour : aucune
 	effet de bord : modifie la structure	
 */
 void swap_endianess(Elf32_Ehdr *entete);
+void swap_endianess_section_table(Elf32_Shdr *shtable);
 
 
 Elf32_Half get_type(Elf32_Ehdr *entete);
