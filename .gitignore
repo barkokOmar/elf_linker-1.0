@@ -24,21 +24,19 @@ autom4te.cache/
 # Ignore build directories
 /build/
 /dist/
-
-# Other
-my_test_affichages
-*.swp
-.deps/
-ARM_runner_example
-Examples_loader/example?
-Examples_loader/stamp-h1
-.vscode
-
-Makefile.in
-aclocal.m4
 build-aux/compile
 build-aux/depcomp
 build-aux/install-sh
 build-aux/missing
 build-aux/ylwrap
 
+# Other
+.vscode
+*.swp
+.deps/
+my_test_affichages
+ARM_runner_example
+Examples_loader/example?
+Examples_loader/stamp-h1
+aclocal.m4
+Examples_loader/.nfs*
