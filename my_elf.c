@@ -249,38 +249,35 @@ void read_shnames(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *shtable,char **shs
 	}
 }
 
-Elf32_Shdr *read_shtable(FILE *file, Elf32_Ehdr *elfhdr) {
+void read_shtable(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char **shstrtab_data) {
 	assert(file);
 	assert(elfhdr);
 
-	Elf32_Half taille_shtable = get_shnum(elfhdr);
-
 	fseek(file, get_shoff(elfhdr), SEEK_SET);
-
-	Elf32_Shdr *shtable = (Elf32_Shdr*)malloc(sizeof(Elf32_Shdr) * taille_shtable);
 	assert(shtable);
 
-	if (fread(shtable, sizeof(Elf32_Shdr), taille_shtable, file) != taille_shtable) {
+	if (fread(shtable, sizeof(Elf32_Shdr), get_shnum(elfhdr), file) != get_shnum(elfhdr)) {
 		perror("Erreur dans la lecture de Section Header");
 		exit(1);
 	}
-	char *shstrtab_data;    
     for (int i = 0; i < elfhdr->e_shnum; i++) {
         if (!is_big_endian()) {
 		swap_endianess_section_table(&shtable[i]);
 	    }
 	}
-    printf("Section Headers:\n");
+	read_shnames(file,elfhdr,shtable,shstrtab_data);
+}
+
+void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_data){
+	printf("Section Headers:\n");
     printf("  [Nr]   Name              Type            Addr        Off       Size\n");    
 	for (int i = 0; i < elfhdr->e_shnum; i++) {
-		read_shnames(file,elfhdr,shtable,&shstrtab_data);
 		printf("  [%-3d] %-18s %-15s 0x%-10x 0x%-8x 0x%-8x\n",i, 
 			&shstrtab_data[shtable[i].sh_name],get_section_type(shtable[i].sh_type),shtable[i].sh_addr,shtable[i].sh_offset,shtable[i].sh_size
 		);
     }
 
-	return shtable;
-}
+} 
 Elf32_Half get_type(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_type; 

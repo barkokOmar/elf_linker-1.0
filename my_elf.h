@@ -19,8 +19,8 @@
 */
 int read_header(FILE* f, Elf32_Ehdr *entete);
 
-/* read_shtable : reads and returns a section headers table */
-Elf32_Shdr *read_shtable(FILE *file, Elf32_Ehdr *header);
+/* read_shtable : reads a section headers table */
+void read_shtable(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char **shstrtab_data);
 
 void read_shnames(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_headers,char **shstrtab_data);
 
@@ -35,6 +35,7 @@ void read_shnames(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *section_headers,ch
    effets de bord : affiche sur la sortie standard
 */
 void affiche_header(Elf32_Ehdr entete);
+void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_data);
 
 /*--- Autre --*/
 

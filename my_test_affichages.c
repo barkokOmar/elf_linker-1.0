@@ -49,7 +49,9 @@ int main(int argc, char *argv[]) {
         perror("Erreur d'ouverture du fichier ELF");
         return 1;
     }
-    Elf32_Ehdr entete; 
+    Elf32_Ehdr entete;
+    Elf32_Shdr *shtable;
+    char *shstrtab_data;
     read_header(fichier, &entete);
 
     // Afficher l'entete si l'option -h est activée
@@ -59,8 +61,10 @@ int main(int argc, char *argv[]) {
 
     // Afficher la table des sections si l'option -S est activée
     if (afficher_shtable) {
-        read_shtable(fichier, &entete);
-
+	    Elf32_Half taille_shtable = get_shnum(&entete);
+	    shtable = (Elf32_Shdr*)malloc(sizeof(Elf32_Shdr) * taille_shtable);
+        read_shtable(fichier, &entete, shtable, &shstrtab_data);
+        affiche_shtable(&entete, shtable, shstrtab_data);
     }
 
     fclose(fichier);
