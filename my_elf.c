@@ -227,6 +227,10 @@ const char* get_section_type(uint32_t type) {
         case SHT_REL: return "REL";
         case SHT_SHLIB: return "SHLIB";
         case SHT_DYNSYM: return "DYNSYM";
+        case SHT_LOPROC: return "LOPROC";
+        case SHT_HIPROC: return "HIPROC";
+        case SHT_LOUSER: return "LOUSER";
+        case SHT_HIUSER: return "HIUSER";
         default: return "UNKNOWN";
     }
 }
