@@ -3,10 +3,10 @@
 //#define NDEBUG		// commenter ce define pour activer les assert à la compilation
 #include <assert.h>
 #include <elf.h>
+#include <string.h>
 
 #include "util.h"
 #include "my_elf.h"
-
 void swap_endianess(Elf32_Ehdr *entete) {
 	assert(entete);
 	entete->e_type		 = reverse_2(entete->e_type);
@@ -287,6 +287,35 @@ void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_dat
     }
 } 
 
+void affiche_contenu_section(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, int sectionIndex) {
+	assert(file);
+	assert(elfhdr);
+	assert(shtable);
+
+    Elf32_Shdr section = shtable[sectionIndex];
+
+    fseek(file, section.sh_offset, SEEK_SET);
+
+    char *section_data = malloc(section.sh_size);
+    if (section_data == NULL) {
+        perror("Erreur d'allocation mémoire");
+        exit(1);
+    }
+    memset(section_data, 0, section.sh_size);
+    if (fread(section_data, sizeof(char), section.sh_size, file) != section.sh_size) {
+        perror("Erreur de lecture des données de la section");
+        free(section_data);
+        exit(1);
+    }
+    printf("Contenu de la section [%d]:\n", sectionIndex);
+    for (size_t i = 0; i < section.sh_size; i++) {
+        printf("%02x ", section_data[i]);
+        if ((i + 1) % 16 == 0) {
+            printf("\n");
+        }
+    }
+    free(section_data);
+}
 Elf32_Half get_type(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_type; 

@@ -57,6 +57,12 @@ int main(int argc, char *argv[]) {
     // Afficher l'entete si l'option -h est activée
     if (afficher_header) {
         affiche_header(entete);
+        /* pour tester affiche_contenu_section dans un premier temps */
+	    Elf32_Half taille_shtable = get_shnum(&entete);
+	    shtable = (Elf32_Shdr*)malloc(sizeof(Elf32_Shdr) * taille_shtable);
+        read_shtable(fichier, &entete, shtable, &shstrtab_data);
+        affiche_contenu_section(fichier, &entete, shtable, 1);
+
     }
 
     // Afficher la table des sections si l'option -S est activée
