@@ -1,7 +1,5 @@
 #!/bin/bash
-
-make distclean 
-autoreconf -vif
 for dir in Examples *; do autoreconf -vif $dir; done
+autoreconf -vif
 CFLAGS='' ./configure
 CFLAGS='' make

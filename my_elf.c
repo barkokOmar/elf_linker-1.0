@@ -7,7 +7,6 @@
 #include "util.h"
 #include "my_elf.h"
 
-
 void swap_endianess(Elf32_Ehdr *entete) {
 	assert(entete);
 	entete->e_type		 = reverse_2(entete->e_type);
@@ -30,45 +29,34 @@ void swap_endianess(Elf32_Ehdr *entete) {
 int read_Half(void *ptr, FILE *stream) {
 	assert(ptr);
 	int taille_lue = fread(ptr, 1, sizeof(Elf32_Half), stream);
-	if (is_big_endian())
-		*((Elf32_Half*)ptr) = reverse_2(*((Elf32_Half*)ptr));
 	assert(taille_lue == sizeof(Elf32_Half));
 	return taille_lue;
 }
 int read_Word(void *ptr, FILE *stream) {
 	assert(ptr);
 	int taille_lue = fread(ptr, 1, sizeof(Elf32_Word), stream);
-	if (!is_big_endian())
-		*((Elf32_Word*)ptr) = reverse_4(*((Elf32_Word*)ptr));
 	assert(taille_lue == sizeof(Elf32_Word));
 	return taille_lue;
 }
 int read_Addr(void *ptr, FILE *stream) {
 	assert(ptr);
 	int taille_lue = fread(ptr, 1, sizeof(Elf32_Addr), stream);
-	if (!is_big_endian())
-		*((Elf32_Addr*)ptr) = reverse_4(*((Elf32_Addr*)ptr));
 	assert(taille_lue == sizeof(Elf32_Addr));
 	return taille_lue;
 }
 int read_Off(void *ptr, FILE *stream) {
 	assert(ptr);
 	int taille_lue = fread(ptr, 1, sizeof(Elf32_Off), stream);
-	if (!is_big_endian())
-		*((Elf32_Off*)ptr) = reverse_4(*((Elf32_Off*)ptr));
 	assert(taille_lue == sizeof(Elf32_Off));
 	return taille_lue;
 }
 int read_Sword(void *ptr, FILE *stream) {
 	assert(ptr);
 	int taille_lue = fread(ptr, 1, sizeof(Elf32_Sword), stream);
-	if (!is_big_endian())
-		*((Elf32_Sword*)ptr) = reverse_4(*((Elf32_Sword*)ptr));
 	assert(taille_lue == sizeof(Elf32_Sword));
 	return taille_lue;
 }
 
-//int read_Shdr(void *ptr,FILE *stream)
 
 int read_header(FILE *fichier, Elf32_Ehdr *entete) {
 	assert(fichier);	// le fichier doit etre ouvert en lecture bit a bit
@@ -94,6 +82,10 @@ int read_header(FILE *fichier, Elf32_Ehdr *entete) {
 	taille_lue += read_Half(&(entete->e_shentsize), fichier);
 	taille_lue += read_Half(&(entete->e_shnum), fichier);
 	taille_lue += read_Half(&(entete->e_shstrndx), fichier);
+
+	if (!is_big_endian()) {
+		swap_endianess(entete);
+	}
 
 	return taille_lue;
 }
@@ -147,17 +139,16 @@ void affiche_header(Elf32_Ehdr entete) {
 			printf("Relocatable file\n");
 			break;
 		case ET_EXEC :
-		case EM_68K : 
-			printf("Motorola 68000\n");
+			printf("EXEC (Executable file)\n");
 			break;
-		case EM_88K : 
-			printf("Motorola 88000\n");
+		case ET_DYN :
+			printf("Shared object file\n");
 			break;
-		case EM_860 : 
-			printf("Intel 80860\n");
+		case ET_CORE :
+			printf("Core file\n");
 			break;
-		case EM_MIPS : 
-			printf("MIPS RS3000 Big-Endian\n");
+		case ET_LOPROC:
+			printf("Processor-specific (LOPROC)\n");
 			break;
 		case ET_HIPROC :
 			printf("Processor-specific (HIPROC)\n");
@@ -212,80 +203,89 @@ void affiche_header(Elf32_Ehdr entete) {
     printf("  Number of section headers:\t\t%d\n", entete.e_shnum);
     printf("  Section header string table index:\t%d\n", entete.e_shstrndx);
 }
-
-uint8_t *get_shname(FILE *file, Elf32_Shdr *shtable, Elf32_Half shstrndx, int sectionIndex) {
-	assert(file);
-
-	Elf32_Word sh_name = shtable[sectionIndex].sh_name;
-	Elf32_Off shstrOffset = shtable[shstrndx].sh_offset;
-
-	fseek(file, shstrOffset + sh_name, SEEK_SET);
-	///////////////////// a finir ///////////////////////
-}
-
-Elf32_Shdr *read_shtable(FILE *file, Elf32_Ehdr *elfhdr) {
-	assert(file);
-	assert(elfhdr);
-
-	Elf32_Half taille_shtable = get_shnum(elfhdr);
-
-	fseek(file, get_shoff(elfhdr), SEEK_SET);
-
-	Elf32_Shdr *shtable = (Elf32_Shdr*)malloc(sizeof(Elf32_Shdr) * taille_shtable);
+///////////////////////////////////////////////////////////////////
+void swap_endianess_section_table(Elf32_Shdr *shtable) {
 	assert(shtable);
-
-	if (fread(shtable, sizeof(Elf32_Shdr), taille_shtable, file) != taille_shtable) {
-		perror("Erreur dans la lecture de Section Header");
-		exit(1);
-	}
-
-	printf("Section Headres:\n");
-	printf("  [Nr] Name              Type            Addr     Off    Size \n");	
-	for (int i = 0; i < elfhdr->e_shnum; i++){
-		printf("  [ %d] %s               %s              %04x   %04x     %04x   ", 
-		i, shtable[i].sh_name, get_shtype(shtable, i), shtable[i].sh_addr, shtable[i].sh_offset, shtable[i].sh_size);		
-			// printf("Section %d", i);
-			// printf("	Name: %u\n", shtable[i].sh_name);
-			// printf("	Type: %u\n", shtable[i].sh_type);
-			// printf("	Adresse: 0x%x\n", shtable[i].sh_addr);
-			// printf("	Offset: 0x%x\n", shtable[i].sh_offset);
-			// printf("	Size:	%u\n", shtable[i].sh_size);
-	}
-	printf(" Key to Flags:
-		W (write), A (alloc), X (execute), M (merge), S (strings), I (info),
-		L (link order), O (extra OS processing required), G (group), T (TLS),
-		C (compressed), x (unknown), o (OS specific), E (exclude),
-		D (mbind), y (purecode), p (processor specific) "); 
-	
-	return shtable;
+	shtable->sh_name = reverse_4(shtable->sh_name);
+	shtable->sh_type = reverse_4(shtable->sh_type);
+	shtable->sh_flags = reverse_4(shtable->sh_flags);
+	shtable->sh_addr = reverse_4(shtable->sh_addr);
+	shtable->sh_offset = reverse_4(shtable->sh_offset);
+	shtable->sh_size = reverse_4(shtable->sh_size);
 }
 
-void read_shnames(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *shtable) {
-	
-	Elf32_Shdr shstrtab = shtable[header->e_shstrndx];
+const char* get_section_type(uint32_t type) {
+    switch (type) {
+        case SHT_NULL: return "NULL";
+        case SHT_PROGBITS: return "PROGBITS";
+        case SHT_SYMTAB: return "SYMTAB";
+        case SHT_STRTAB: return "STRTAB";
+        case SHT_RELA: return "RELA";
+        case SHT_HASH: return "HASH";
+        case SHT_DYNAMIC: return "DYNAMIC";
+        case SHT_NOTE: return "NOTE";
+        case SHT_NOBITS: return "NOBITS";
+        case SHT_REL: return "REL";
+        case SHT_SHLIB: return "SHLIB";
+        case SHT_DYNSYM: return "DYNSYM";
+        case SHT_LOPROC: return "LOPROC";
+        case SHT_HIPROC: return "HIPROC";
+        case SHT_LOUSER: return "LOUSER";
+        case SHT_HIUSER: return "HIUSER";
+        default: return "UNKNOWN";
+    }
+}
 
-	char *shstrtab_data = malloc(shstrtab.sh_size);
-	if (!shstrtab_data){
-		perror("Erruer d'allocation de memoire pour Section Names");
+void read_shnames(FILE *file, Elf32_Half e_shstrndx, Elf32_Shdr *shtable, char **shstrtab_data) { 
+	
+	Elf32_Shdr shstrtab = shtable[e_shstrndx];
+
+	*shstrtab_data = (char*)malloc(shstrtab.sh_size);
+	if (!shstrtab_data) {
+		perror("Erreur d'allocation de memoire pour Section Names");
 		exit(1);
 	}
 
 	fseek(file, shstrtab.sh_offset, SEEK_SET);
-	if(fread(shstrtab_data, 1, shstrtab.sh_size, file) != shstrtab.sh_size){
+	if(fread(*shstrtab_data, 1, shstrtab.sh_size, file) != shstrtab.sh_size){
 		perror("Erreur de lecture pour Section Name String Table");
-		free(shstrtab_data);
+		free(*shstrtab_data);
+		exit(1);
+	}
+}
+
+void read_shtable(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char **shstrtab_data) {
+	assert(file);
+	assert(elfhdr);
+	assert(shtable);
+
+	fseek(file, get_shoff(elfhdr), SEEK_SET);
+
+	Elf32_Half taille_shtable = get_shnum(elfhdr);
+	Elf32_Half each_entry_size = get_shentsize(elfhdr);
+
+	if (fread(shtable, each_entry_size, taille_shtable, file) != taille_shtable) {
+		perror("Erreur dans la lecture de Section Header");
 		exit(1);
 	}
 
-	printf("Section Names:\n");
-	for(int i = 0; i < header->e_shnum; i++){
-		printf("Section %d: %s\n", i, &shstrtab_data[shtable[i].sh_name]);
+    if (!is_big_endian()) {
+		for (int i = 0; i < get_shnum(elfhdr); i++)
+			swap_endianess_section_table(&shtable[i]);
 	}
-	free(shstrtab_data);
+	read_shnames(file, get_shstrndx(elfhdr), shtable, shstrtab_data);
 }
 
-
-
+void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_data) {
+	printf("There are %d section headers, starting at offset 0x%x:\n\n", elfhdr->e_shnum, elfhdr->e_shoff);
+	printf("Section Headers:\n");
+    printf("  [Nr] Name              Type            Addr     Off    Size\n");    
+	for (int i = 0; i < get_shnum(elfhdr); i++) {
+		printf("  [%2d] %-18s%-15s %08x %06x %06x\n", i, 
+			&shstrtab_data[shtable[i].sh_name],get_section_type(shtable[i].sh_type),shtable[i].sh_addr,shtable[i].sh_offset,shtable[i].sh_size
+		);
+    }
+} 
 
 Elf32_Half get_type(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
