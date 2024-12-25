@@ -6,6 +6,7 @@
 
 #include "util.h"
 #include "my_elf.h"
+
 void swap_endianess(Elf32_Ehdr *entete) {
 	assert(entete);
 	entete->e_type		 = reverse_2(entete->e_type);
@@ -235,12 +236,12 @@ const char* get_section_type(uint32_t type) {
     }
 }
 
-void read_shnames(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *shtable,char **shstrtab_data) { 
+void read_shnames(FILE *file, Elf32_Half e_shstrndx, Elf32_Shdr *shtable, char **shstrtab_data) { 
 	
-	Elf32_Shdr shstrtab = shtable[header->e_shstrndx];
+	Elf32_Shdr shstrtab = shtable[e_shstrndx];
 
-	*shstrtab_data = malloc(shstrtab.sh_size);
-	if (!shstrtab_data){
+	*shstrtab_data = (char*)malloc(shstrtab.sh_size);
+	if (!shstrtab_data) {
 		perror("Erreur d'allocation de memoire pour Section Names");
 		exit(1);
 	}
@@ -256,32 +257,36 @@ void read_shnames(FILE *file, Elf32_Ehdr *header, Elf32_Shdr *shtable,char **shs
 void read_shtable(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char **shstrtab_data) {
 	assert(file);
 	assert(elfhdr);
-
-	fseek(file, get_shoff(elfhdr), SEEK_SET);
 	assert(shtable);
 
-	if (fread(shtable, sizeof(Elf32_Shdr), get_shnum(elfhdr), file) != get_shnum(elfhdr)) {
+	fseek(file, get_shoff(elfhdr), SEEK_SET);
+
+	Elf32_Half taille_shtable = get_shnum(elfhdr);
+	Elf32_Half each_entry_size = get_shentsize(elfhdr);
+
+	if (fread(shtable, each_entry_size, taille_shtable, file) != taille_shtable) {
 		perror("Erreur dans la lecture de Section Header");
 		exit(1);
 	}
-    for (int i = 0; i < elfhdr->e_shnum; i++) {
-        if (!is_big_endian()) {
-		swap_endianess_section_table(&shtable[i]);
-	    }
+
+    if (!is_big_endian()) {
+		for (int i = 0; i < get_shnum(elfhdr); i++)
+			swap_endianess_section_table(&shtable[i]);
 	}
-	read_shnames(file,elfhdr,shtable,shstrtab_data);
+	read_shnames(file, get_shstrndx(elfhdr), shtable, shstrtab_data);
 }
 
-void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_data){
+void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_data) {
+	printf("There are %d section headers, starting at offset 0x%x:\n\n", elfhdr->e_shnum, elfhdr->e_shoff);
 	printf("Section Headers:\n");
-    printf("  [Nr]   Name              Type            Addr        Off       Size\n");    
-	for (int i = 0; i < elfhdr->e_shnum; i++) {
-		printf("  [%-3d] %-18s %-15s 0x%-10x 0x%-8x 0x%-8x\n",i, 
+    printf("  [Nr] Name              Type            Addr     Off    Size\n");    
+	for (int i = 0; i < get_shnum(elfhdr); i++) {
+		printf("  [%2d] %-18s%-15s %08x %06x %06x\n", i, 
 			&shstrtab_data[shtable[i].sh_name],get_section_type(shtable[i].sh_type),shtable[i].sh_addr,shtable[i].sh_offset,shtable[i].sh_size
 		);
     }
-
 } 
+
 Elf32_Half get_type(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_type; 
