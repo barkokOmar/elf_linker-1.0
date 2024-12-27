@@ -253,26 +253,27 @@ void read_shnames(FILE *file, Elf32_Half e_shstrndx, Elf32_Shdr *shtable, char *
 	}
 }
 
-void read_shtable(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char **shstrtab_data) {
+void read_shtable(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr **shtable, char **shstrtab_data) {
 	assert(file);
 	assert(elfhdr);
-	assert(shtable);
 
 	fseek(file, get_shoff(elfhdr), SEEK_SET);
 
 	Elf32_Half taille_shtable = get_shnum(elfhdr);
 	Elf32_Half each_entry_size = get_shentsize(elfhdr);
+	*shtable = (Elf32_Shdr*)malloc(sizeof(Elf32_Shdr) * taille_shtable);
+	assert(*shtable);
 
-	if (fread(shtable, each_entry_size, taille_shtable, file) != taille_shtable) {
+	if (fread(*shtable, each_entry_size, taille_shtable, file) != taille_shtable) {
 		perror("Erreur dans la lecture de Section Header");
 		exit(1);
 	}
 
     if (!is_big_endian()) {
 		for (int i = 0; i < get_shnum(elfhdr); i++)
-			swap_endianess_section_table(&shtable[i]);
+			swap_endianess_section_table(&(*shtable)[i]);
 	}
-	read_shnames(file, get_shstrndx(elfhdr), shtable, shstrtab_data);
+	read_shnames(file, get_shstrndx(elfhdr), *shtable, shstrtab_data);
 }
 
 void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_data) {
@@ -293,7 +294,7 @@ void affiche_contenu_section(FILE *file, Elf32_Shdr *shtable, char *shstrtab_dat
 
     fseek(file, section.sh_offset, SEEK_SET);
 
-    uint8_t *section_data = malloc(section.sh_size);
+    uint8_t *section_data = (uint8_t*)malloc(section.sh_size);
     if (section_data == NULL) {
         perror("Erreur d'allocation mémoire");
         exit(1);

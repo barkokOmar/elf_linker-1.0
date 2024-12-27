@@ -20,7 +20,7 @@
 int read_header(FILE* f, Elf32_Ehdr *entete);
 
 /* read_shtable : reads a section headers table */
-void read_shtable(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char **shstrtab_data);
+void read_shtable(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr **shtable, char **shstrtab_data);
 void read_shnames(FILE *file, Elf32_Half e_shstrndx, Elf32_Shdr *section_headers, char **shstrtab_data);
 
 
