@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <elf.h>
 #include <string.h>
-
 #include "util.h"
 #include "my_elf.h"
 void swap_endianess(Elf32_Ehdr *entete) {
@@ -286,36 +285,71 @@ void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_dat
 		);
     }
 } 
-
-void affiche_contenu_section(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, int sectionIndex) {
+void affiche_contenu_section(FILE *file, Elf32_Shdr *shtable, char *shstrtab_data, int sectionIndex) {
 	assert(file);
-	assert(elfhdr);
 	assert(shtable);
 
     Elf32_Shdr section = shtable[sectionIndex];
 
     fseek(file, section.sh_offset, SEEK_SET);
 
-    char *section_data = malloc(section.sh_size);
+    uint8_t *section_data = malloc(section.sh_size);
     if (section_data == NULL) {
         perror("Erreur d'allocation mémoire");
         exit(1);
     }
     memset(section_data, 0, section.sh_size);
-    if (fread(section_data, sizeof(char), section.sh_size, file) != section.sh_size) {
+    if (fread(section_data, 1, section.sh_size, file) != section.sh_size) {
         perror("Erreur de lecture des données de la section");
         free(section_data);
         exit(1);
     }
-    printf("Contenu de la section [%d]:\n", sectionIndex);
-    for (size_t i = 0; i < section.sh_size; i++) {
-        printf("%02x ", section_data[i]);
-        if ((i + 1) % 16 == 0) {
-            printf("\n");
+	Elf32_Addr sh_addr = shtable[sectionIndex].sh_addr;
+    printf("Hex dump of section '%s':\n", &shstrtab_data[section.sh_name]);
+	printf("0x%08x ",sh_addr);
+	int j=0;
+    for (int i=0; i < section.sh_size; i++) {
+        printf("%02x", section_data[i]);
+		if ((i+1)%4==0){//pour faire un espace chaque 4 octet affiché
+			printf(" ");
+		}
+		if ((i+1) == section.sh_size && (i + 1) % 16 != 0){
+			//boucle pour ameliorer l'affichage 
+			int e = i+1;
+			while (e % 16 != 0){
+				printf("  ");
+				if ((e+1)%4==0){
+					printf(" ");
+				}
+				e++;
+			}
+		}
+        if ((i + 1) % 16 == 0 || (i+1) == section.sh_size ) {//(i + 1) % 16 == 0 : pour ne pas dépasser 16 octet par ligne
+			while (j<=i){  
+				// Si le caractère est imprimable, l'afficher, sinon afficher un point
+				if (section_data[j]>= 32 && section_data[j] <= 126) {
+					printf("%c", section_data[j]);
+				} else {
+					printf(".");
+				}
+				if ((j + 1) % 16 == 0 || (j+1) == section.sh_size) {
+					if (j!=section.sh_size-1){
+					printf("\n");
+					sh_addr = sh_addr + 10;
+					printf("0x%08x ",sh_addr);
+					}
+					else {
+						printf("\n");
+					}
+
+				}
+				j++;
+			}
         }
     }
     free(section_data);
 }
+
 Elf32_Half get_type(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_type; 

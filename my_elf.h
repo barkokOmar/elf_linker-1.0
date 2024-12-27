@@ -35,7 +35,7 @@ void read_shnames(FILE *file, Elf32_Half e_shstrndx, Elf32_Shdr *section_headers
 */
 void affiche_header(Elf32_Ehdr entete);
 void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_data);
-void affiche_contenu_section(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, int sectionIndex);
+void affiche_contenu_section(FILE *file, Elf32_Shdr *shtable, char *shstrtab_data, int sectionIndex);
 
 /*--- Autre --*/
 

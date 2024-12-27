@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -61,7 +62,7 @@ int main(int argc, char *argv[]) {
 	    Elf32_Half taille_shtable = get_shnum(&entete);
 	    shtable = (Elf32_Shdr*)malloc(sizeof(Elf32_Shdr) * taille_shtable);
         read_shtable(fichier, &entete, shtable, &shstrtab_data);
-        affiche_contenu_section(fichier, &entete, shtable, 1);
+        affiche_contenu_section(fichier, shtable, shstrtab_data, 1);
 
     }
 
@@ -77,4 +78,3 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-
