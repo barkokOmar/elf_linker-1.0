@@ -22,7 +22,7 @@ int read_header(FILE* f, Elf32_Ehdr *entete);
 /* read_shtable : reads a section headers table */
 void read_shtable(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr **shtable, char **shstrtab_data);
 void read_shnames(FILE *file, Elf32_Half e_shstrndx, Elf32_Shdr *section_headers, char **shstrtab_data);
-
+void read_symtable(FILE *file, Elf32_Sym **symtable, Elf32_Ehdr *elfhdr, Elf32_Shdr **shtable, int *symtabIndex);
 
 /*--- Interfaces Affichage --*/
 
@@ -36,6 +36,7 @@ void read_shnames(FILE *file, Elf32_Half e_shstrndx, Elf32_Shdr *section_headers
 void affiche_header(Elf32_Ehdr entete);
 void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_data);
 void affiche_contenu_section(FILE *file, Elf32_Shdr *shtable, char *shstrtab_data, int sectionIndex);
+void affiche_symtable(Elf32_Shdr *shtable, Elf32_Sym **symtable, char *shstrtab_data, int symtabIndex);
 
 /*--- Autre --*/
 
@@ -48,6 +49,7 @@ void affiche_contenu_section(FILE *file, Elf32_Shdr *shtable, char *shstrtab_dat
 */
 void swap_endianess(Elf32_Ehdr *entete);
 void swap_endianess_section_table(Elf32_Shdr *shtable);
+void swap_endianess_symtable(Elf32_Sym *symtable);
 
 
 Elf32_Half get_type(Elf32_Ehdr *entete);

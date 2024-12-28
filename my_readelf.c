@@ -14,6 +14,7 @@ void help() {
     printf("  -h        Affiche l'en-tête du fichier ELF\n");
     printf("  -S        Affiche la table des sections du fichier ELF\n");
     printf("  -x <i>    Affiche le contenu de la section spécifiée par l'index i\n");
+    printf("  -s        Affiche la table de symbole du fichier ELF\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -21,13 +22,16 @@ int main(int argc, char *argv[]) {
         help();
         return 1;
     }
+
     Elf32_Ehdr entete;
     Elf32_Shdr *shtable = NULL;
+    Elf32_Sym *symtable = NULL;
     char *shstrtab_data = NULL;
 
     int afficher_header = 0;
     int afficher_shtable = 0;
     int section_index = -1; 
+    int symtabIndex = 0;
 
     // Utilisation de getopt pour gérer les options -h et -S,etc...
     int opt;
@@ -83,6 +87,12 @@ int main(int argc, char *argv[]) {
         else
             affiche_contenu_section(fichier, shtable, shstrtab_data, section_index);
     }
+
+    // Affiche la table des symboles
+    
+    read_symtable(fichier, &symtable, &entete, &shtable, &symtabIndex);
+    affiche_symtable(shtable, &symtable, shstrtab_data, symtabIndex);
+
     
     free(shtable);
     fclose(fichier);
