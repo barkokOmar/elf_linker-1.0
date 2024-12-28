@@ -40,3 +40,7 @@ Examples_loader/example?
 Examples_loader/stamp-h1
 aclocal.m4
 Examples_loader/.nfs*
+Examples_loader/Makefile.in
+Examples_loader/aclocal.m4
+Examples_loader/configure
+compare_affichages.s

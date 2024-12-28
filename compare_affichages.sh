@@ -1,16 +1,33 @@
 #!/bin/bash
 
-if [[ $# -lt 1 ]]; then
-	example="Examples_loader/example1"
+
+make &>/dev/null
+
+if [[ $# -eq 2 ]]
+then
+	if [[ "$2" == "-?" ]]; then
+		fichier="Examples_loader/example1.o"
+		option="$2"
+		restArgs=""
+	else
+		fichier="$2"
+		option="-h"
+		restArgs=""
+	fi
+elif [[ $# -ge 3 ]]
+then
+	fichier="$2"
+	option="$3"
+	restArgs="${@:4}"
 else
-	example="$1"
+	exit 1
 fi
 
-make 
-echo "============================= Resultat Attendu:"
-arm-none-eabi-readelf -h "$example"
 
-echo "============================= Resultat Obtenu:"
-./my_test_affichages "$example" 
+echo "---------------------------- Resultat Attendu:"
+arm-none-eabi-readelf "$fichier" "$option" "$restArgs"
+
+echo "---------------------------- Resultat Obtenu:"
+"$0" "$fichier" "$option" "$restArgs" 
 
 

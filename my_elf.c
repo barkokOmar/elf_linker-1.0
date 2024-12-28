@@ -1,11 +1,12 @@
+//#define NDEBUG		// commenter cette ligne pour activer les asserts 
 #include <stdio.h>
 #include <stdlib.h>
-//#define NDEBUG		// commenter ce define pour activer les assert à la compilation
 #include <assert.h>
 #include <elf.h>
 #include <string.h>
 #include "util.h"
 #include "my_elf.h"
+
 void swap_endianess(Elf32_Ehdr *entete) {
 	assert(entete);
 	entete->e_type		 = reverse_2(entete->e_type);
@@ -239,6 +240,12 @@ const char* get_section_type(Elf32_Word type) {
     }
 }
 
+void afficher_strtable(char *shstrtab_data, Elf32_Shdr shtable) {
+	printf("Affichage de la table des chaines de caractères\n");
+	for (int i = 0; i < shtable.sh_size; i++)
+		printf("(%d, %c)", i, shstrtab_data[i]);
+}
+
 void read_shnames(FILE *file, Elf32_Half e_shstrndx, Elf32_Shdr *shtable, char **shstrtab_data) { 
 	
 	Elf32_Shdr shstrtab = shtable[e_shstrndx];
@@ -249,12 +256,16 @@ void read_shnames(FILE *file, Elf32_Half e_shstrndx, Elf32_Shdr *shtable, char *
 		exit(1);
 	}
 
-	fseek(file, shstrtab.sh_offset, SEEK_SET);
+	//fseek(file, shstrtab.sh_offset, SEEK_SET);
+	
+	fseek(file, 0x0000e8, SEEK_SET);
 	if(fread(*shstrtab_data, 1, shstrtab.sh_size, file) != shstrtab.sh_size){
 		perror("Erreur de lecture pour Section Name String Table");
 		free(*shstrtab_data);
 		exit(1);
 	}
+
+    afficher_strtable(*shstrtab_data, shstrtab);
 }
 
 
@@ -363,40 +374,50 @@ void swap_endianess_symtable(Elf32_Sym *symtable) {
 	symtable->st_name =	reverse_4(symtable->st_name);
 	symtable->st_value = reverse_4(symtable->st_value);
 	symtable->st_size =	reverse_4(symtable->st_size);
-	symtable->st_info =	reverse_4(symtable->st_info);
-	symtable->st_other = reverse_4(symtable->st_other);
-	symtable->st_shndx = reverse_4(symtable->st_shndx);
+	//symtable->st_info =	reverse_4(symtable->st_info); 	// vue que un char = 1 octet, pas besoin de swap
+	//symtable->st_other = reverse_4(symtable->st_other); 	// idem
+	symtable->st_shndx = reverse_2(symtable->st_shndx); 	// y avait reverse_4 au lieu de reverse_2
+}
+
+int is_symatble(Elf32_Shdr *shtable, int index) {
+	return SHT_SYMTAB == shtable[index].sh_type;
 }
 
 void read_symtable(FILE *file, Elf32_Sym **symtable, Elf32_Ehdr *elfhdr, Elf32_Shdr **shtable, int *symtabIndex) {
+
 	assert(file);
 	assert(shtable);
 
 	// on cherche l'indice de la table de symboles dans la table des sections
 	*symtabIndex = 0;
-	while ( *symtabIndex < get_shnum(elfhdr) && SHT_SYMTAB != (*shtable)[*symtabIndex].sh_type )
-		(*symtabIndex) += 1;
+	while ( *symtabIndex < get_shnum(elfhdr) && !is_symatble(*shtable, *symtabIndex) )
+		(*symtabIndex)++;
 	
 	Elf32_Shdr sh_symtable = (*shtable)[*symtabIndex];
+
+	Elf32_Word symtable_size = sh_symtable.sh_size;
+	int nombreDeSymboles = symtable_size / sizeof(Elf32_Sym);
 	
 	fseek(file, sh_symtable.sh_offset, SEEK_SET);
 
-	Elf32_Word symtable_size = sh_symtable.sh_size;
 	*symtable = (Elf32_Sym*)malloc(symtable_size);
 	assert(*symtable);
 
-	if (fread(*symtable, 1, symtable_size, file) != symtable_size) {
-		perror("Erreur dans la lecture de Table Symboles");
-		exit(1);
-	}
-
-	int nombreDeSymboles = symtable_size / sizeof(Elf32_Sym);
-    if (!is_big_endian()) {
-		for (int i = 0; i < nombreDeSymboles; i++)
+	// lecture de la table des symboles
+	for (int i = 0; i < nombreDeSymboles; i++) {
+		if (fread(&(*symtable)[i], 1, sizeof(Elf32_Sym), file) != sizeof(Elf32_Sym)) {
+			fprintf(stderr, "Erreur de lecture de la table des symboles\n");
+			exit(1);
+		}
+		if (!is_big_endian())
 			swap_endianess_symtable(&(*symtable)[i]);
 	}
 
 }
+
+
+
+
 const char* get_symbind(unsigned char st_info) {
     switch (ELF32_ST_BIND(st_info)) {
         case STB_LOCAL:
@@ -440,19 +461,18 @@ void affiche_symtable(Elf32_Shdr *shtable, Elf32_Sym **symtable, char *shstrtab_
 	int nombreDeSymboles = symtable_size / sizeof(Elf32_Sym);
 
 	printf("Symbol table '%s' contains %d entries:\n", &shstrtab_data[shtable[symtabIndex].sh_name], nombreDeSymboles);
-    //printf("   Num:    Value  Size Type    Bind  Ndx Name\n");    
-    printf("   Num:    Value   Size Type    Bind   Ndx Name\n");
+    printf("   Num:    Value  Size Type    Bind   Vis      Ndx Name\n");
 
 	for (int i = 0; i < nombreDeSymboles; i++) {
 		symbole = (*symtable)[i];
-		printf("   %3d: %08x   %4d %-8s%-7s%3d %-s\n", i, 
-			symbole.st_value, symbole.st_size, get_symtype(symbole.st_info), 
-			get_symbind(symbole.st_info), symbole.st_shndx,  &shstrtab_data[symbole.st_name]
+		printf("   %3d: %08x  %4d %-8s%-7sTOTOTOT  %3d %-s\n",
+			i, symbole.st_value, symbole.st_size, get_symtype(symbole.st_info), 
+			get_symbind(symbole.st_info), symbole.st_shndx, &shstrtab_data[symbole.st_name]
 		);
     }
 } 
-////////////
 
+////////////
 
 ////////////
 Elf32_Half get_type(Elf32_Ehdr *entete) { 

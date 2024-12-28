@@ -30,12 +30,13 @@ int main(int argc, char *argv[]) {
 
     int afficher_header = 0;
     int afficher_shtable = 0;
+    int afficher_symboles = 0;
     int section_index = -1; 
-    int symtabIndex = 0;
+    int symtabIndex = -1;
 
     // Utilisation de getopt pour gérer les options -h et -S,etc...
     int opt;
-    while ((opt = getopt(argc, argv, "hSx:")) != -1) {
+    while ((opt = getopt(argc, argv, "hSx:s")) != -1) {
         switch (opt) {
             case 'h':  // Option pour afficher l'entete
                 afficher_header = 1;
@@ -49,6 +50,9 @@ int main(int argc, char *argv[]) {
                         section_index = atoi(optarg);  // Convertir l'argument en entier
                 }
                 break;
+            case 's':  // Option pour afficher la table des sections
+                afficher_symboles = 1;
+                break;
             default:
                 help();
                 return 0;
@@ -56,14 +60,14 @@ int main(int argc, char *argv[]) {
     }
    // Assurer qu'un fichier ELF est fourni après les options
     if (optind >= argc) {
-        fprintf(stderr, "Erreur : Le fichier fourni n'est pas un fichier elf \n");
+        fprintf(stderr, "Erreur : Le fichier fourni n'est pas un fichier ELF\n");
         help();
         return 1;
     }
 
     FILE *fichier = fopen(argv[optind], "rb");
     if (!fichier) {
-        perror("Erreur d'ouverture du fichier ELF");
+        fprintf(stderr, "Erreur : Impossible d'ouvrir le fichier %s\n", argv[optind]);
         return 1;
     }
 
@@ -89,12 +93,13 @@ int main(int argc, char *argv[]) {
     }
 
     // Affiche la table des symboles
-    
     read_symtable(fichier, &symtable, &entete, &shtable, &symtabIndex);
-    affiche_symtable(shtable, &symtable, shstrtab_data, symtabIndex);
+    if (afficher_symboles)
+        affiche_symtable(shtable, &symtable, shstrtab_data, symtabIndex);
 
     
     free(shtable);
+    free(symtable);
     fclose(fichier);
 
     return 0;
