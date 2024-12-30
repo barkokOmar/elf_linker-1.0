@@ -1,0 +1,14 @@
+#!/bin/bash
+
+
+make &>/dev/null
+
+restArgs="${@:1}"
+echo "restArgs : $restArgs"
+
+echo "---------------------------- Resultat Attendu:"
+arm-none-eabi-readelf "$1" "$2"
+
+echo "---------------------------- Resultat Obtenu:"
+./my_readelf "$1" "$2"
+

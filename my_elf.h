@@ -4,24 +4,30 @@
 #include <elf.h>
 #include <stdint.h>
 
+/*--- Structures --*/
 
-
+typedef struct {
+   Elf32_Ehdr elfhdr;
+   Elf32_Shdr *shtable;
+   Elf32_Sym *symtable;
+   char *sh_strtab;
+   char *sym_strtab;
+} Elf32;
 
 /*--- Interfaces Lecture --*/
 
-/*
-   read_header
+/* read_header
    description : lit l'entete d'un fichier ELF
    paramètres : un fichier ELF precedemment ouvert en lecture bit a bit, l'adresse de 
    				la structure entete ou on souhaite stocker le resultat de la lecture
    valeur de retour : nombre d'octets correctement lus
    effets de bord : modifie la structure entete donnee en argument de fonction
 */
-int read_header(FILE* f, Elf32_Ehdr *entete);
+size_t read_header(FILE* f, Elf32_Ehdr *elfhdr);
 
-/* read_shtable : reads a section headers table */
-void read_shtable(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr **shtable, char **shstrtab_data);
-void read_shnames(FILE *file, Elf32_Half e_shstrndx, Elf32_Shdr *section_headers, char **shstrtab_data);
+void read_shtable(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr **shtable);
+size_t read_strtab(FILE *file, Elf32 *elfdata, const char *section_name);
+
 void read_symtable(FILE *file, Elf32_Sym **symtable, Elf32_Ehdr *elfhdr, Elf32_Shdr **shtable, int *symtabIndex);
 
 /*--- Interfaces Affichage --*/
@@ -36,7 +42,8 @@ void read_symtable(FILE *file, Elf32_Sym **symtable, Elf32_Ehdr *elfhdr, Elf32_S
 void affiche_header(Elf32_Ehdr entete);
 void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_data);
 void affiche_contenu_section(FILE *file, Elf32_Shdr *shtable, char *shstrtab_data, int sectionIndex);
-void affiche_symtable(Elf32_Shdr *shtable, Elf32_Sym **symtable, char *shstrtab_data, int symtabIndex);
+//void affiche_symtable(Elf32_Shdr *shtable, Elf32_Sym **symtable, char *shstrtab_data, int symtabIndex);
+void affiche_symtable(Elf32 elfdata, int symtabIndex);
 
 /*--- Autre --*/
 
@@ -47,7 +54,7 @@ void affiche_symtable(Elf32_Shdr *shtable, Elf32_Sym **symtable, char *shstrtab_
 	valeur de retour : aucune
 	effet de bord : modifie la structure	
 */
-void swap_endianess(Elf32_Ehdr *entete);
+void swap_endianess_ehdr(Elf32_Ehdr *entete);
 void swap_endianess_section_table(Elf32_Shdr *shtable);
 void swap_endianess_symtable(Elf32_Sym *symtable);
 
@@ -66,5 +73,10 @@ Elf32_Half get_shentsize(Elf32_Ehdr *entete);
 Elf32_Half get_shnum(Elf32_Ehdr *entete);
 Elf32_Half get_shstrndx(Elf32_Ehdr *entete);
 
+int is_symatble(Elf32_Shdr *shtable, int index);
+
+const char* get_symtype(unsigned char st_info);
+const char* get_symbind(unsigned char st_info);
+const char* get_section_name(Elf32 elfdata, int index);
 
 #endif

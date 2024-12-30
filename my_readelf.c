@@ -23,10 +23,13 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    Elf32_Ehdr entete;
+    //Elf32_Ehdr entete;
+    Elf32_Ehdr *entete = (Elf32_Ehdr*)malloc(sizeof(Elf32_Ehdr));
     Elf32_Shdr *shtable = NULL;
     Elf32_Sym *symtable = NULL;
-    char *shstrtab_data = NULL;
+
+    char *sh_strtab = NULL;
+    char *sym_strtab = NULL;
 
     int afficher_header = 0;
     int afficher_shtable = 0;
@@ -58,7 +61,8 @@ int main(int argc, char *argv[]) {
                 return 0;
         }
     }
-   // Assurer qu'un fichier ELF est fourni après les options
+
+    // Assurer qu'un fichier ELF est fourni après les options
     if (optind >= argc) {
         fprintf(stderr, "Erreur : Le fichier fourni n'est pas un fichier ELF\n");
         help();
@@ -71,34 +75,39 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    read_header(fichier, &entete);
-    // Afficher l'entete si l'option -h est activée
+
+    Elf32 elfdata = {*entete, shtable, symtable, sh_strtab, sym_strtab};
+
+    read_header(fichier, &(elfdata.elfhdr));
     if (afficher_header)
-        affiche_header(entete);
+        affiche_header(elfdata.elfhdr);
 
-
-    read_shtable(fichier, &entete, &shtable, &shstrtab_data);
-    // Afficher la table des sections si l'option -S est activée
+    read_shtable(fichier, &(elfdata.elfhdr), &(elfdata.shtable));
+    // On lit les tables des chaines de caractères .shstrtab et .strtab
+    read_strtab(fichier, &elfdata, ".shstrtab");
+    read_strtab(fichier, &elfdata, ".strtab");
     if (afficher_shtable)
-        affiche_shtable(&entete, shtable, shstrtab_data);
+        affiche_shtable(&(elfdata.elfhdr), elfdata.shtable, elfdata.sh_strtab);
     
+
     // Afficher le contenue de la section spécifié par l'index section_index
     if ( section_index != -1 ) {
         if (section_index == 0)
             printf("Section '' has no data to dump.\n");
-        else if (section_index < 0 || section_index >= get_shnum(&entete) )
-            printf("readelf: Warning: Section %d was not dumped because it does not exist!.\n",section_index);
+        else if (section_index < 0 || section_index >= get_shnum(&elfdata.elfhdr) )
+            printf("readelf: Warning: Section %d was not dumped because it does not exist!.\n", section_index);
         else
-            affiche_contenu_section(fichier, shtable, shstrtab_data, section_index);
+            affiche_contenu_section(fichier, elfdata.shtable, elfdata.sh_strtab, section_index);
     }
 
-    // Affiche la table des symboles
-    read_symtable(fichier, &symtable, &entete, &shtable, &symtabIndex);
+    read_symtable(fichier, &(elfdata.symtable), &(elfdata.elfhdr), &(elfdata.shtable), &symtabIndex);
     if (afficher_symboles)
-        affiche_symtable(shtable, &symtable, shstrtab_data, symtabIndex);
+        //affiche_symtable(elfdata.shtable, &(elfdata.symtable), elfdata.sym_strtab, symtabIndex);
+        affiche_symtable(elfdata, symtabIndex);
 
     
     free(shtable);
+    free(sh_strtab);
     free(symtable);
     fclose(fichier);
 
