@@ -84,6 +84,10 @@ int main(int argc, char *argv[]) {
     Elf32 elfdata = {*elfhdr, shtable, symtable, reltab, sh_strtab, sym_strtab};
 
     read_header(fichier, &(elfdata.elfhdr));
+    if((elfdata.elfhdr).e_ident[EI_CLASS] != ELFCLASS32){
+        printf("Erreur, Pas ELF32 !\n");
+        return 1;
+    }
     if (afficher_header)
         affiche_header(elfdata.elfhdr);
 

@@ -87,6 +87,8 @@ Elf32_Half get_shnum(Elf32_Ehdr *entete);
 Elf32_Half get_shstrndx(Elf32_Ehdr *entete);
 
 int is_symatble(Elf32_Shdr *shtable, int index);
+const char* get_st_shndx(Elf32_Half st_shndx);
+const char* get_st_visibility(unsigned char st_other);
 
 const char* get_symtype(unsigned char st_info);
 const char* get_symbind(unsigned char st_info);

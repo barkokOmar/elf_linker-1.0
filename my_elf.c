@@ -474,14 +474,26 @@ void affiche_symtable(Elf32 elfdata, int symtabIndex) {
 	int nombreDeSymboles = symtable_size / sizeof(Elf32_Sym);
 
 	printf("Symbol table '%s' contains %d entries:\n", &elfdata.sh_strtab[symtable_section.sh_name], nombreDeSymboles);
-    printf("   Num:    Value  Size Type    Bind   Vis      Ndx Name\n");
+    printf("   Num:    Value  Size Type    Bind   Vis        Ndx Name\n");
 
 	for (int i = 0; i < nombreDeSymboles; i++) {
 		symbole = elfdata.symtable[i];
-		printf("   %3d: %08x  %4d %-8s%-7sTOTOTOT  %3d %-s\n",
+		if (get_st_shndx(symbole.st_shndx) == NULL) {
+			Elf32_Half st_shndx;
+			st_shndx = symbole.st_shndx;
+			printf("   %3d: %08x  %4d %-8s%-7s%-9s  %3d %-s\n",
 			i, symbole.st_value, symbole.st_size, get_symtype(symbole.st_info), 
-			get_symbind(symbole.st_info), symbole.st_shndx, &(elfdata.sym_strtab[symbole.st_name])
+			get_symbind(symbole.st_info), get_st_visibility(symbole.st_other),
+			st_shndx, &(elfdata.sym_strtab[symbole.st_name])
 		);
+	    } else {
+			const char * st_shndx;
+			st_shndx = get_st_shndx(symbole.st_shndx);
+			printf("   %3d: %08x  %4d %-8s%-7s%-9s  %-9s %-s\n",
+			i, symbole.st_value, symbole.st_size, get_symtype(symbole.st_info), 
+			get_symbind(symbole.st_info), get_st_visibility(symbole.st_other),
+			st_shndx, &(elfdata.sym_strtab[symbole.st_name]));
+		}
     }
 } 
 
@@ -581,10 +593,12 @@ int affiche_reltab(Elf32 elfdata) {
 
 	Elf32_RelEntry *entries = elfdata.reltab.entries;
 	Elf32_Rel *rel;
-	//Elf32_Rela *rela;
+	Elf32_Rela *rela;
 	Elf32_Shdr *shtable = elfdata.shtable;
 	Elf32_Sym *symtable = elfdata.symtable;
+	char *sym_strtab = elfdata.sym_strtab;
 	char *sh_strtab = elfdata.sh_strtab;
+	char *SymName;
 	//char *sym_strtab = elfdata.sym_strtab;
 
 
@@ -596,13 +610,31 @@ int affiche_reltab(Elf32 elfdata) {
 			printf("Offset     Info    Type            Sym.Value  Sym. Name\n");
 			rel = entries[i].rel;
 			for (int j = 0; j < entries[i].relnum; j++) {
-				////////// donc hna khass dir if bach mniin dir affichage dyal symbole
+				////////// donc hna khass dir if bach mniin dir affichage dyal symbole 
+				if (ELF32_ST_TYPE(symtable[ELF32_R_SYM(rel[j].r_info)].st_info) == STT_SECTION )
+					SymName = &sh_strtab[shtable[symtable[ELF32_R_SYM(rel[j].r_info)].st_shndx].sh_name];
+				else 
+					SymName = &sym_strtab[symtable[ELF32_R_SYM(rel[j].r_info)].st_name];
+	
 				printf("%08x  %08x  %-15s  %08x  %s\n",
-					rel[j].r_offset, rel[j].r_info, "R_386_32", symtable[ELF32_R_SYM(rel[j].r_info)].st_value, &sh_strtab[shtable[symtable[ELF32_R_SYM(rel[j].r_info)].st_shndx].sh_name]
-				);
+					rel[j].r_offset, rel[j].r_info, "R_386_32", symtable[ELF32_R_SYM(rel[j].r_info)].st_value, SymName);
+				//printf("type relocationo : %d\n", ELF32_R_SYM(rel[j].r_info));//pour tester affichage du type 
+
 			}
 		} else {
 			printf("Offset     Info    Type            Sym.Value  Sym. Name + Addend\n");
+			rela = entries[i].rela;
+			for (int j = 0; j < entries[i].relnum; j++) {
+				////////// donc hna khass dir if bach mniin dir affichage dyal symbole 
+				if (ELF32_ST_TYPE(symtable[ELF32_R_SYM(rela[j].r_info)].st_info) == STT_SECTION )
+					SymName = &sh_strtab[shtable[symtable[ELF32_R_SYM(rela[j].r_info)].st_shndx].sh_name];
+				else 
+					SymName = &sym_strtab[symtable[ELF32_R_SYM(rela[j].r_info)].st_name];
+	
+				printf("%08x  %08x  %-15s  %08x  %s + %x\n",
+					rela[j].r_offset, rela[j].r_info, "R_386_32", symtable[ELF32_R_SYM(rela[j].r_info)].st_value, SymName, rela[j].r_addend);
+
+			}     
 		}
 	}
 	/*
@@ -704,7 +736,41 @@ Elf32_Half get_shstrndx(Elf32_Ehdr *entete) {
 }
 
 ////////////////////////////////////
+const char* get_st_shndx(Elf32_Half st_shndx) {
+    switch (st_shndx) {
+        case SHN_UNDEF:
+            return "UND";
+        case SHN_LORESERVE:
+            return "LORESERVE";
+        // case SHN_LOPROC: //apparament c'est la meme valeur que SHN_LORESERVE
+        //     return "LOPROC";
+        case SHN_HIPROC:
+            return "HIPROC";
+        case SHN_ABS:
+            return "ABS";
+        case SHN_COMMON:
+            return "COMMON";
+        case SHN_HIRESERVE:
+            return "HIRESERVE";
+        default:
+            return NULL;
+    }
+}
 
+const char* get_st_visibility(unsigned char st_other) {
+    switch (ELF32_ST_VISIBILITY(st_other)) {
+        case STV_DEFAULT:
+            return "DEFAULT";
+        case STV_INTERNAL:
+            return "INTERNAL";
+        case STV_HIDDEN:
+            return "HIDDEN";
+        case STV_PROTECTED:
+            return "PROTECTED";
+        default:
+            return "UNKNOWN";
+    }
+}
 const char* get_symbind(unsigned char st_info) {
     switch (ELF32_ST_BIND(st_info)) {
         case STB_LOCAL:
