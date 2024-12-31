@@ -15,6 +15,7 @@ void help() {
     printf("  -S        Affiche la table des sections du fichier ELF\n");
     printf("  -x <i>    Affiche le contenu de la section spécifiée par l'index i\n");
     printf("  -s        Affiche la table de symbole du fichier ELF\n");
+    printf("  -r        Affiche la table de relocation du fichier ELF\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -23,10 +24,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    //Elf32_Ehdr entete;
-    Elf32_Ehdr *entete = (Elf32_Ehdr*)malloc(sizeof(Elf32_Ehdr));
+    //Elf32_Ehdr elfhdr;
+    Elf32_Ehdr *elfhdr = (Elf32_Ehdr*)malloc(sizeof(Elf32_Ehdr));
     Elf32_Shdr *shtable = NULL;
     Elf32_Sym *symtable = NULL;
+    Elf32_Reltab reltab = {NULL, 0};
 
     char *sh_strtab = NULL;
     char *sym_strtab = NULL;
@@ -34,12 +36,13 @@ int main(int argc, char *argv[]) {
     int afficher_header = 0;
     int afficher_shtable = 0;
     int afficher_symboles = 0;
+    int afficher_reltab = 0;
     int section_index = -1; 
     int symtabIndex = -1;
 
     // Utilisation de getopt pour gérer les options -h et -S,etc...
     int opt;
-    while ((opt = getopt(argc, argv, "hSx:s")) != -1) {
+    while ((opt = getopt(argc, argv, "hSx:sr")) != -1) {
         switch (opt) {
             case 'h':  // Option pour afficher l'entete
                 afficher_header = 1;
@@ -55,6 +58,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 's':  // Option pour afficher la table des sections
                 afficher_symboles = 1;
+                break;
+            case 'r':  // Option pour afficher la table des sections
+                afficher_reltab = 1;
                 break;
             default:
                 help();
@@ -75,8 +81,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-
-    Elf32 elfdata = {*entete, shtable, symtable, sh_strtab, sym_strtab};
+    Elf32 elfdata = {*elfhdr, shtable, symtable, reltab, sh_strtab, sym_strtab};
 
     read_header(fichier, &(elfdata.elfhdr));
     if (afficher_header)
@@ -102,13 +107,19 @@ int main(int argc, char *argv[]) {
 
     read_symtable(fichier, &(elfdata.symtable), &(elfdata.elfhdr), &(elfdata.shtable), &symtabIndex);
     if (afficher_symboles)
-        //affiche_symtable(elfdata.shtable, &(elfdata.symtable), elfdata.sym_strtab, symtabIndex);
         affiche_symtable(elfdata, symtabIndex);
 
+    read_reltab(fichier, &elfdata);
+    if (afficher_reltab)
+        affiche_reltab(elfdata);
     
+    free(elfhdr);
     free(shtable);
-    free(sh_strtab);
     free(symtable);
+    free(reltab.entries);
+    free(sh_strtab);
+    free(sym_strtab);
+
     fclose(fichier);
 
     return 0;

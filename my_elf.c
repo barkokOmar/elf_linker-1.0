@@ -484,24 +484,154 @@ void affiche_symtable(Elf32 elfdata, int symtabIndex) {
 		);
     }
 } 
-/*
-void affiche_symtable(Elf32_Shdr *shtable, Elf32_Sym **symtable, char *strtab, int symtabIndex) {
-	Elf32_Word symtable_size = shtable[symtabIndex].sh_size ;
-	Elf32_Sym symbole;
-	int nombreDeSymboles = symtable_size / sizeof(Elf32_Sym);
 
-	printf("Symbol table '%s' contains %d entries:\n", &strtab[shtable[symtabIndex].sh_name], nombreDeSymboles);
-    printf("   Num:    Value  Size Type    Bind   Vis      Ndx Name\n");
 
-	for (int i = 0; i < nombreDeSymboles; i++) {
-		symbole = (*symtable)[i];
-		printf("   %3d: %08x  %4d %-8s%-7sTOTOTOT  %3d %-s\n",
-			i, symbole.st_value, symbole.st_size, get_symtype(symbole.st_info), 
-			get_symbind(symbole.st_info), symbole.st_shndx, &strtab[symbole.st_name]
+void init_relenrty(Elf32_RelEntry *entry) {
+	assert(entry);
+	entry->rel = NULL;
+	entry->rela = NULL;
+	entry->relnum = 0;
+	entry->shndx = -1;
+}
+
+int is_rela(Elf32_Word type) { return SHT_RELA == type; }
+int is_rel(Elf32_Word type) { return SHT_REL == type; }
+
+void swap_endianess_rel(Elf32_Rel *rel, int nbrel) {
+	assert(rel);
+	for (int i = 0; i < nbrel; i++) {
+		rel[i].r_offset = reverse_4(rel[i].r_offset);
+		rel[i].r_info = reverse_4(rel[i].r_info);
+	}
+}
+void swap_endianess_rela(Elf32_Rela *rela, int nbrel) {
+	assert(rela);
+	for (int i = 0; i < nbrel; i++) {
+		rela[i].r_offset = reverse_4(rela[i].r_offset);
+		rela[i].r_info = reverse_4(rela[i].r_info);
+		rela[i].r_addend = reverse_4(rela[i].r_addend);
+	}
+}
+
+void read_reltab(FILE *file, Elf32 *elfdata) {
+	assert(file);
+	assert(elfdata);
+	assert(elfdata->shtable);
+	
+	Elf32_Shdr *shtable = elfdata->shtable;
+	Elf32_Ehdr *elfhdr = &(elfdata->elfhdr);
+	Elf32_Word reltab_size = 0; 
+	Elf32_Shdr sh_reltab;
+
+	// on initialise la table des relocations
+	elfdata->reltab.entries = NULL;
+	int *taille_tabrel = &(elfdata->reltab.entrynum);
+	*taille_tabrel = 0;
+	int is_rel_or_rela;
+	int nombreDeRelocations = 0;
+	size_t taille_lue = 0;
+
+	// on cherche les tables de relocations
+	for (int i=0; i < get_shnum(elfhdr); i++) {
+		sh_reltab = shtable[i];
+		Elf32_Word section_type = sh_reltab.sh_type;
+		is_rel_or_rela = is_rel(section_type) || is_rela(section_type) ;
+
+		if (!is_rel_or_rela)
+			continue;
+		
+		reltab_size = sh_reltab.sh_size;
+		nombreDeRelocations = reltab_size / sizeof(Elf32_Rel);
+		*taille_tabrel += 1;	// on incrémente le nombre de tables de relocations
+
+		// on realloue la mémoire pour la table des relocations (pour rajouter une nouvelle entrée)
+		elfdata->reltab.entries = (Elf32_RelEntry*)realloc(elfdata->reltab.entries, *taille_tabrel * sizeof(Elf32_RelEntry));
+		assert(elfdata->reltab.entries);
+
+		// on initialise la nouvelle entrée
+		init_relenrty(&(elfdata->reltab.entries[*taille_tabrel-1]));
+		elfdata->reltab.entries[*taille_tabrel-1].relnum = nombreDeRelocations;
+		elfdata->reltab.entries[*taille_tabrel-1].shndx = i;
+
+		fseek(file, sh_reltab.sh_offset, SEEK_SET);
+
+		// on alloue la bonne mémoire pour la table des relocations de la section courante
+		if (sh_reltab.sh_type == SHT_REL) {
+			elfdata->reltab.entries[*taille_tabrel-1].rel = (Elf32_Rel*)malloc(reltab_size);
+			assert(elfdata->reltab.entries[*taille_tabrel-1].rel);
+			taille_lue = fread(elfdata->reltab.entries[*taille_tabrel-1].rel, 1, reltab_size, file);
+			assert(taille_lue == reltab_size);
+			swap_endianess_rel(elfdata->reltab.entries[*taille_tabrel-1].rel, nombreDeRelocations);
+		} else {
+			elfdata->reltab.entries[*taille_tabrel-1].rela = (Elf32_Rela*)malloc(reltab_size);
+			assert(elfdata->reltab.entries[*taille_tabrel-1].rela);
+			taille_lue = fread(elfdata->reltab.entries[*taille_tabrel-1].rela, 1, reltab_size, file);
+			assert(taille_lue == reltab_size);
+			swap_endianess_rela(elfdata->reltab.entries[*taille_tabrel-1].rela, nombreDeRelocations);
+		}
+	}
+}
+
+int affiche_reltab(Elf32 elfdata) {
+	//printf("bonjour :)\n");
+	if (elfdata.reltab.entrynum == 0) {
+		fprintf(stderr, "There are no relocations in this file.\n");
+		return 0;
+	}
+
+	Elf32_RelEntry *entries = elfdata.reltab.entries;
+	Elf32_Rel *rel;
+	//Elf32_Rela *rela;
+	Elf32_Shdr *shtable = elfdata.shtable;
+	Elf32_Sym *symtable = elfdata.symtable;
+	char *sh_strtab = elfdata.sh_strtab;
+	//char *sym_strtab = elfdata.sym_strtab;
+
+
+	for (int i = 0; i < elfdata.reltab.entrynum; i++) {
+		printf("Relocation section '%s' at offset 0x%x contains %d entries:\n",
+			&sh_strtab[shtable[entries[i].shndx].sh_name], shtable[entries[i].shndx].sh_offset, entries[i].relnum
 		);
-    }
-} 
-*/
+		if (is_rel(shtable[entries[i].shndx].sh_type)) {
+			printf("Offset     Info    Type            Sym.Value  Sym. Name\n");
+			rel = entries[i].rel;
+			for (int j = 0; j < entries[i].relnum; j++) {
+				////////// donc hna khass dir if bach mniin dir affichage dyal symbole
+				printf("%08x  %08x  %-15s  %08x  %s\n",
+					rel[j].r_offset, rel[j].r_info, "R_386_32", symtable[ELF32_R_SYM(rel[j].r_info)].st_value, &sh_strtab[shtable[symtable[ELF32_R_SYM(rel[j].r_info)].st_shndx].sh_name]
+				);
+			}
+		} else {
+			printf("Offset     Info    Type            Sym.Value  Sym. Name + Addend\n");
+		}
+	}
+	/*
+	for (int i = 0; i < elfdata.reltab.entrynum; i++) {
+		printf("Relocation section '%s' at offset 0x%x contains %d entries:\n",
+			&sh_strtab[shtable[entries[i].shndx].sh_name], shtable[entries[i].shndx].sh_offset, entries[i].relnum
+		);
+		printf("Offset     Info    Type            Sym.Value  Sym. Name\n");
+
+		if (is_rel(shtable[entries[i].shndx].sh_type)) {
+			rel = entries[i].rel;
+			for (int j = 0; j < entries[i].relnum; j++) {
+				printf("%08x  %08x  %-15s  %08x  %s\n",
+					rel[j].r_offset, rel[j].r_info, "R_386_32", symtable[ELF32_R_SYM(rel[j].r_info)].st_value, &sym_strtab[symtable[ELF32_R_SYM(rel[j].r_info)].st_name]
+				);
+			}
+		} else {
+			rela = entries[i].rela;
+			for (int j = 0; j < entries[i].relnum; j++) {
+				printf("%08x  %08x  %-15s  %08x  %s\n",
+					rela[j].r_offset, rela[j].r_info, "R_386_32", symtable[ELF32_R_SYM(rela[j].r_info)].st_value, &sym_strtab[symtable[ELF32_R_SYM(rela[j].r_info)].st_name]
+				);
+			}
+		}
+	}
+	*/
+	return 0;
+}
+
 
 
 

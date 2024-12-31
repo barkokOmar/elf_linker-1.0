@@ -6,10 +6,24 @@
 
 /*--- Structures --*/
 
+ 
+typedef struct {
+   Elf32_Rel *rel;
+   Elf32_Rela *rela;  
+   int shndx;        // indice de la section a laquelle la relocation s'applique
+   int relnum;       // nombre de relocations dans la table
+} Elf32_RelEntry;
+
+typedef struct {
+   Elf32_RelEntry *entries;   
+   int entrynum;                // number of relocation entries (taille du tableau)
+} Elf32_Reltab;
+
 typedef struct {
    Elf32_Ehdr elfhdr;
    Elf32_Shdr *shtable;
    Elf32_Sym *symtable;
+   Elf32_Reltab reltab;
    char *sh_strtab;
    char *sym_strtab;
 } Elf32;
@@ -24,11 +38,10 @@ typedef struct {
    effets de bord : modifie la structure entete donnee en argument de fonction
 */
 size_t read_header(FILE* f, Elf32_Ehdr *elfhdr);
-
 void read_shtable(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr **shtable);
 size_t read_strtab(FILE *file, Elf32 *elfdata, const char *section_name);
-
 void read_symtable(FILE *file, Elf32_Sym **symtable, Elf32_Ehdr *elfhdr, Elf32_Shdr **shtable, int *symtabIndex);
+void read_reltab(FILE *file, Elf32 *elfdata);
 
 /*--- Interfaces Affichage --*/
 
@@ -42,8 +55,8 @@ void read_symtable(FILE *file, Elf32_Sym **symtable, Elf32_Ehdr *elfhdr, Elf32_S
 void affiche_header(Elf32_Ehdr entete);
 void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_data);
 void affiche_contenu_section(FILE *file, Elf32_Shdr *shtable, char *shstrtab_data, int sectionIndex);
-//void affiche_symtable(Elf32_Shdr *shtable, Elf32_Sym **symtable, char *shstrtab_data, int symtabIndex);
 void affiche_symtable(Elf32 elfdata, int symtabIndex);
+int affiche_reltab(Elf32 elfdata);
 
 /*--- Autre --*/
 
