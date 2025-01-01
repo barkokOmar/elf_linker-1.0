@@ -83,57 +83,45 @@ size_t read_header(FILE *fichier, Elf32_Ehdr *entete) {
 	taille_lue += read_Half(&(entete->e_shnum), fichier);
 	taille_lue += read_Half(&(entete->e_shstrndx), fichier);
 
-	if (!is_big_endian()) {
+	if (!is_big_endian())
 		swap_endianess_ehdr(entete);
-	}
 
 	return taille_lue;
 }
 
 
 void affiche_header(Elf32_Ehdr entete) {
-	printf("we are in %s endian\n", is_big_endian() ? "big" : "little");
+	//printf("This machine reads in %s endian\n", is_big_endian() ? "big" : "little");
 
     printf("ELF header:\n");
-    printf("  Magic:    ");
-    for(int i=0; i < EI_NIDENT; i++) {
+    printf("  Magic:   ");
+    for(int i=0; i < EI_NIDENT; i++)
         printf("%02x ", entete.e_ident[i]);
-    }
     printf("\n");
-
     //---------------EI_CLASS----------
-    printf("  Class:\t\t\t\t");
-    if(entete.e_ident[EI_CLASS] == ELFCLASS32){
+    printf("  Class:                             ");
+    if(entete.e_ident[EI_CLASS] == ELFCLASS32)
         printf("ELF32\n");
-    } else {
+    else
         printf("pas ELF32\n");
-    }
-
     //---------------EI_DATA----------
-    printf("  Data:\t\t\t\t\t");
-    if (entete.e_ident[EI_DATA] == ELFDATA2LSB) {
+    printf("  Data:                              ");
+    if (entete.e_ident[EI_DATA] == ELFDATA2LSB)
         printf("2's complement, little endian\n");
-    } else if (entete.e_ident[EI_DATA] == ELFDATA2MSB) {
+    else if (entete.e_ident[EI_DATA] == ELFDATA2MSB)
         printf("2's complement, big endian\n");
-		/*
-		if (!is_big_endian())	// ici on aura swap alors qu'elles sont déjà dans le bon boutisme...
-			swap_endianess_ehdr(&entete);
-		*/
-    } else {
+    else {
 		assert(ELFDATANONE == entete.e_ident[EI_DATA]);
         printf("Invalid data encoding\n");
     }
-	
     //---------------EI_VERSION----------
-    printf("  Version:\t\t\t\t");
-	if (entete.e_ident[EI_VERSION] == EV_CURRENT) {
+    printf("  Version:                           ");
+	if (entete.e_ident[EI_VERSION] == EV_CURRENT)
 		printf("1 (current)\n");
-	} else {
+	else
 		printf("invalid versionn\n");
-	}
-
     //----------------e_type----------
-    printf("  Type:\t\t\t\t\t");
+    printf("  Type:                              ");
 	switch (entete.e_type) {
 		case ET_REL :
 			printf("Relocatable file\n");
@@ -157,7 +145,7 @@ void affiche_header(Elf32_Ehdr entete) {
 			printf("No file type (should be 0, actual value: [0x%04x] )\n", reverse_2(entete.e_type));
 	}
     //----------------e_machine----------
-	printf("  Machine:\t\t\t\t");
+	printf("  Machine:                           ");
 	switch (entete.e_machine) {
 		case ET_NONE :
 			printf("No machine\n");
@@ -189,19 +177,19 @@ void affiche_header(Elf32_Ehdr entete) {
 
 
     //----------------e_version----------
-	printf("  Version:\t\t\t\t0x%x\n", entete.e_version);
+	printf("  Version:                           0x%x\n", entete.e_version);
 
     //----------------Le Reste----------
-    printf("  Entry point address:\t\t\t0x%02x\n", entete.e_entry);
-    printf("  Start of program headers:\t\t%d (bytes into file)\n", entete.e_phoff);
-    printf("  Start of section headers:\t\t%d (bytes into file)\n", entete.e_shoff);
-    printf("  Flags:\t\t\t\t0x%x\n", entete.e_flags);
-    printf("  Size of this header:\t\t\t%d (bytes)\n", entete.e_ehsize);
-    printf("  Size of program headers:\t\t%d (bytes)\n", entete.e_phentsize);
-    printf("  Number of program headers:\t\t%d\n", entete.e_phnum);
-    printf("  Size of section headers:\t\t%d (bytes)\n", entete.e_shentsize);
-    printf("  Number of section headers:\t\t%d\n", entete.e_shnum);
-    printf("  Section header string table index:\t%d\n", entete.e_shstrndx);
+    printf("  Entry point address:               0x%x\n", entete.e_entry);
+    printf("  Start of program headers:          %d (bytes into file)\n", entete.e_phoff);
+    printf("  Start of section headers:          %d (bytes into file)\n", entete.e_shoff);
+    printf("  Flags:                             0x%x\n", entete.e_flags);
+    printf("  Size of this header:               %d (bytes)\n", entete.e_ehsize);
+    printf("  Size of program headers:           %d (bytes)\n", entete.e_phentsize);
+    printf("  Number of program headers:         %d\n", entete.e_phnum);
+    printf("  Size of section headers:           %d (bytes)\n", entete.e_shentsize);
+    printf("  Number of section headers:         %d\n", entete.e_shnum);
+    printf("  Section header string table index: %d\n", entete.e_shstrndx);
 }
 ///////////////////////////////////////////////////////////////////
 void swap_endianess_section_table(Elf32_Shdr *shtable) {
@@ -294,30 +282,6 @@ size_t read_strtab(FILE *file, Elf32 *elfdata, const char *section_name) {
 
 	return taille_lue;
 }
-
-/*
-void read_shnames(FILE *file, Elf32_Half e_shstrndx, Elf32_Shdr *shtable, char **shstrtab_data) { 
-	
-	Elf32_Shdr shstrtab = shtable[e_shstrndx];
-
-	*shstrtab_data = (char*)malloc(shstrtab.sh_size);
-	if (!shstrtab_data) {
-		perror("Erreur d'allocation de memoire pour Section Names");
-		exit(1);
-	}
-
-	//fseek(file, shstrtab.sh_offset, SEEK_SET);
-	fseek(file, 0x0000e8, SEEK_SET);
-
-	if(fread(*shstrtab_data, 1, shstrtab.sh_size, file) != shstrtab.sh_size){
-		perror("Erreur de lecture pour Section Name String Table");
-		free(*shstrtab_data);
-		exit(1);
-	}
-
-    afficher_strtable(*shstrtab_data, shstrtab);
-}
-*/
 
 
 
@@ -431,12 +395,9 @@ void swap_endianess_symtable(Elf32_Sym *symtable) {
 	symtable->st_shndx = reverse_2(symtable->st_shndx);
 }
 
-int is_symatble(Elf32_Shdr *shtable, int index) {
-	return SHT_SYMTAB == shtable[index].sh_type;
-}
+int is_symatble(Elf32_Shdr *shtable, int index) { return SHT_SYMTAB == shtable[index].sh_type; }
 
 void read_symtable(FILE *file, Elf32_Sym **symtable, Elf32_Ehdr *elfhdr, Elf32_Shdr **shtable, int *symtabIndex) {
-
 	assert(file);
 	assert(shtable);
 
@@ -471,28 +432,29 @@ void affiche_symtable(Elf32 elfdata, int symtabIndex) {
 	Elf32_Shdr symtable_section = elfdata.shtable[symtabIndex];
 	Elf32_Word symtable_size = symtable_section.sh_size ;
 	Elf32_Sym symbole;
+	Elf32_Half st_shndx_int;
+	const char * st_shndx_str;
 	int nombreDeSymboles = symtable_size / sizeof(Elf32_Sym);
 
 	printf("Symbol table '%s' contains %d entries:\n", &elfdata.sh_strtab[symtable_section.sh_name], nombreDeSymboles);
-    printf("   Num:    Value  Size Type    Bind   Vis        Ndx Name\n");
+    printf("   Num:    Value  Size Type    Bind   Vis      Ndx Name\n");
 
 	for (int i = 0; i < nombreDeSymboles; i++) {
 		symbole = elfdata.symtable[i];
 		if (get_st_shndx(symbole.st_shndx) == NULL) {
-			Elf32_Half st_shndx;
-			st_shndx = symbole.st_shndx;
-			printf("   %3d: %08x  %4d %-8s%-7s%-9s  %3d %-s\n",
-			i, symbole.st_value, symbole.st_size, get_symtype(symbole.st_info), 
-			get_symbind(symbole.st_info), get_st_visibility(symbole.st_other),
-			st_shndx, &(elfdata.sym_strtab[symbole.st_name])
-		);
+			st_shndx_int = symbole.st_shndx;
+			printf("   %3d: %08x  %4d %-8s%-7s%-9s%3d %-s\n",
+				i, symbole.st_value, symbole.st_size, get_symtype(symbole.st_info), 
+				get_symbind(symbole.st_info), get_st_visibility(symbole.st_other),
+				st_shndx_int, &(elfdata.sym_strtab[symbole.st_name])
+			);
 	    } else {
-			const char * st_shndx;
-			st_shndx = get_st_shndx(symbole.st_shndx);
-			printf("   %3d: %08x  %4d %-8s%-7s%-9s  %-9s %-s\n",
-			i, symbole.st_value, symbole.st_size, get_symtype(symbole.st_info), 
-			get_symbind(symbole.st_info), get_st_visibility(symbole.st_other),
-			st_shndx, &(elfdata.sym_strtab[symbole.st_name]));
+			st_shndx_str = get_st_shndx(symbole.st_shndx);
+			printf("   %3d: %08x  %4d %-8s%-7s%-9s%-3s %-s\n",
+				i, symbole.st_value, symbole.st_size, get_symtype(symbole.st_info), 
+				get_symbind(symbole.st_info), get_st_visibility(symbole.st_other),
+				st_shndx_str, &(elfdata.sym_strtab[symbole.st_name])
+			);
 		}
     }
 } 
@@ -599,68 +561,39 @@ int affiche_reltab(Elf32 elfdata) {
 	char *sym_strtab = elfdata.sym_strtab;
 	char *sh_strtab = elfdata.sh_strtab;
 	char *SymName;
-	//char *sym_strtab = elfdata.sym_strtab;
-
 
 	for (int i = 0; i < elfdata.reltab.entrynum; i++) {
 		printf("Relocation section '%s' at offset 0x%x contains %d entries:\n",
 			&sh_strtab[shtable[entries[i].shndx].sh_name], shtable[entries[i].shndx].sh_offset, entries[i].relnum
 		);
 		if (is_rel(shtable[entries[i].shndx].sh_type)) {
-			printf("Offset     Info    Type            Sym.Value  Sym. Name\n");
+			printf(" Offset     Info    Type            Sym.Value  Sym. Name\n");
 			rel = entries[i].rel;
 			for (int j = 0; j < entries[i].relnum; j++) {
-				////////// donc hna khass dir if bach mniin dir affichage dyal symbole 
 				if (ELF32_ST_TYPE(symtable[ELF32_R_SYM(rel[j].r_info)].st_info) == STT_SECTION )
 					SymName = &sh_strtab[shtable[symtable[ELF32_R_SYM(rel[j].r_info)].st_shndx].sh_name];
 				else 
 					SymName = &sym_strtab[symtable[ELF32_R_SYM(rel[j].r_info)].st_name];
 	
-				printf("%08x  %08x  %-15s  %08x  %s\n",
-					rel[j].r_offset, rel[j].r_info, "R_386_32", symtable[ELF32_R_SYM(rel[j].r_info)].st_value, SymName);
-				//printf("type relocationo : %d\n", ELF32_R_SYM(rel[j].r_info));//pour tester affichage du type 
-
+				printf("%08x  %08x %-15s   %08x   %s\n",
+					rel[j].r_offset, rel[j].r_info, get_reloc_type(rel[j].r_info), symtable[ELF32_R_SYM(rel[j].r_info)].st_value, SymName
+				);
 			}
-		} else {
-			printf("Offset     Info    Type            Sym.Value  Sym. Name + Addend\n");
+		} else { // section de type SHT_RELA: on affiche les addends
+			printf(" Offset     Info    Type            Sym.Value  Sym. Name + Addend\n");
 			rela = entries[i].rela;
 			for (int j = 0; j < entries[i].relnum; j++) {
-				////////// donc hna khass dir if bach mniin dir affichage dyal symbole 
 				if (ELF32_ST_TYPE(symtable[ELF32_R_SYM(rela[j].r_info)].st_info) == STT_SECTION )
 					SymName = &sh_strtab[shtable[symtable[ELF32_R_SYM(rela[j].r_info)].st_shndx].sh_name];
 				else 
 					SymName = &sym_strtab[symtable[ELF32_R_SYM(rela[j].r_info)].st_name];
 	
-				printf("%08x  %08x  %-15s  %08x  %s + %x\n",
-					rela[j].r_offset, rela[j].r_info, "R_386_32", symtable[ELF32_R_SYM(rela[j].r_info)].st_value, SymName, rela[j].r_addend);
+				printf("%08x  %08x %-15s   %08x   %s + %x\n",
+					rela[j].r_offset, rela[j].r_info, get_reloc_type(rela[j].r_info), symtable[ELF32_R_SYM(rela[j].r_info)].st_value, SymName, rela[j].r_addend);
 
 			}     
 		}
 	}
-	/*
-	for (int i = 0; i < elfdata.reltab.entrynum; i++) {
-		printf("Relocation section '%s' at offset 0x%x contains %d entries:\n",
-			&sh_strtab[shtable[entries[i].shndx].sh_name], shtable[entries[i].shndx].sh_offset, entries[i].relnum
-		);
-		printf("Offset     Info    Type            Sym.Value  Sym. Name\n");
-
-		if (is_rel(shtable[entries[i].shndx].sh_type)) {
-			rel = entries[i].rel;
-			for (int j = 0; j < entries[i].relnum; j++) {
-				printf("%08x  %08x  %-15s  %08x  %s\n",
-					rel[j].r_offset, rel[j].r_info, "R_386_32", symtable[ELF32_R_SYM(rel[j].r_info)].st_value, &sym_strtab[symtable[ELF32_R_SYM(rel[j].r_info)].st_name]
-				);
-			}
-		} else {
-			rela = entries[i].rela;
-			for (int j = 0; j < entries[i].relnum; j++) {
-				printf("%08x  %08x  %-15s  %08x  %s\n",
-					rela[j].r_offset, rela[j].r_info, "R_386_32", symtable[ELF32_R_SYM(rela[j].r_info)].st_value, &sym_strtab[symtable[ELF32_R_SYM(rela[j].r_info)].st_name]
-				);
-			}
-		}
-	}
-	*/
 	return 0;
 }
 
@@ -736,22 +669,21 @@ Elf32_Half get_shstrndx(Elf32_Ehdr *entete) {
 }
 
 ////////////////////////////////////
+
 const char* get_st_shndx(Elf32_Half st_shndx) {
     switch (st_shndx) {
         case SHN_UNDEF:
             return "UND";
         case SHN_LORESERVE:
-            return "LORESERVE";
-        // case SHN_LOPROC: //apparament c'est la meme valeur que SHN_LORESERVE
-        //     return "LOPROC";
+            return "LOR";
         case SHN_HIPROC:
-            return "HIPROC";
+            return "HIP";
         case SHN_ABS:
             return "ABS";
         case SHN_COMMON:
-            return "COMMON";
+            return "COM";
         case SHN_HIRESERVE:
-            return "HIRESERVE";
+            return "HIR";
         default:
             return NULL;
     }
@@ -813,4 +745,21 @@ const char *get_section_name(Elf32 elfdata, int index) {
 	assert(0 <= index && index < shnum);
 	Elf32_Word sh_name = elfdata.shtable[index].sh_name;
 	return &(elfdata.sh_strtab[sh_name]);
+}
+
+const char *get_reloc_type(Elf32_Word type) {
+	switch (ELF32_R_TYPE(type)) {
+		case R_ARM_ABS32:
+			return "R_ARM_ABS32";
+		case R_ARM_ABS16:
+			return "R_ARM_ABS16";
+		case R_ARM_ABS8:
+			return "R_ARM_ABS8";
+		case R_ARM_CALL:
+			return "R_ARM_CALL";
+		case R_ARM_JUMP24:
+			return "R_ARM_JUMP24";
+		default:
+			return "UNKNOWN";
+	}
 }

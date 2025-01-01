@@ -93,5 +93,6 @@ const char* get_st_visibility(unsigned char st_other);
 const char* get_symtype(unsigned char st_info);
 const char* get_symbind(unsigned char st_info);
 const char* get_section_name(Elf32 elfdata, int index);
+const char *get_reloc_type(Elf32_Word type);
 
 #endif

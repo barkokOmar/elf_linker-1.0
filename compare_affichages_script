@@ -1,14 +1,25 @@
 #!/bin/bash
 
+make clean;
+make
 
-make &>/dev/null
-
-restArgs="${@:1}"
-echo "restArgs : $restArgs"
-
+echo ""
 echo "---------------------------- Resultat Attendu:"
-arm-none-eabi-readelf "$1" "$2"
+echo ""
+if [[ $# -eq 3 ]]
+then
+	arm-none-eabi-readelf "$1" "$2" "$3"
+else
+	arm-none-eabi-readelf "$1" "$2"
+fi
 
+echo ""
 echo "---------------------------- Resultat Obtenu:"
-./my_readelf "$1" "$2"
+echo ""
+if [[ $# -eq 3 ]]
+then
+	./my_readelf "$1" "$2" "$3"
+else
+	./my_readelf "$1" "$2" "$3"
+fi
 

@@ -83,6 +83,7 @@ int main(int argc, char *argv[]) {
 
     Elf32 elfdata = {*elfhdr, shtable, symtable, reltab, sh_strtab, sym_strtab};
 
+    // lecture de l'en-tête du fichier ELF
     read_header(fichier, &(elfdata.elfhdr));
     if((elfdata.elfhdr).e_ident[EI_CLASS] != ELFCLASS32){
         printf("Erreur, Pas ELF32 !\n");
@@ -91,6 +92,7 @@ int main(int argc, char *argv[]) {
     if (afficher_header)
         affiche_header(elfdata.elfhdr);
 
+    // lecture de la table des sections
     read_shtable(fichier, &(elfdata.elfhdr), &(elfdata.shtable));
     // On lit les tables des chaines de caractères .shstrtab et .strtab
     read_strtab(fichier, &elfdata, ".shstrtab");
@@ -98,7 +100,6 @@ int main(int argc, char *argv[]) {
     if (afficher_shtable)
         affiche_shtable(&(elfdata.elfhdr), elfdata.shtable, elfdata.sh_strtab);
     
-
     // Afficher le contenue de la section spécifié par l'index section_index
     if ( section_index != -1 ) {
         if (section_index == 0)
@@ -109,10 +110,12 @@ int main(int argc, char *argv[]) {
             affiche_contenu_section(fichier, elfdata.shtable, elfdata.sh_strtab, section_index);
     }
 
+    // lecture de la table des symboles
     read_symtable(fichier, &(elfdata.symtable), &(elfdata.elfhdr), &(elfdata.shtable), &symtabIndex);
     if (afficher_symboles)
         affiche_symtable(elfdata, symtabIndex);
 
+    // lecture de la table des relocations
     read_reltab(fichier, &elfdata);
     if (afficher_reltab)
         affiche_reltab(elfdata);
