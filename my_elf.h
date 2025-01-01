@@ -45,8 +45,7 @@ void read_reltab(FILE *file, Elf32 *elfdata);
 
 /*--- Interfaces Affichage --*/
 
-/*
-   affiche_header
+/* affiche_header
    description : affiche l'entete donnee
    paramètres : l'entete que l'on souhaite afficher
    valeur de retour : aucune
@@ -58,12 +57,31 @@ void affiche_contenu_section(FILE *file, Elf32_Shdr *shtable, char *shstrtab_dat
 void affiche_symtable(Elf32 elfdata, int symtabIndex);
 int affiche_reltab(Elf32 elfdata);
 
+/*--- Interfaces Phase2 --*/
+
+/* supprime_sh
+   description : supprime la section d'indice donnee du fichier ELF
+   paramètres : un fichier ELF ouvert en ecriture, la structure Elf32 contenant les donnees
+   				du fichier, l'indice de la section a supprimer
+   valeur de retour : 0 si tout s'est bien passe, -1 sinon
+   effets de bord : modifie le fichier ELF et la structure Elf32
+*/
+int supprime_sh(FILE *file, Elf32 *elfdata, int index);
+
+/* supprime_relsh
+   description : supprime les sections de type SHT_REL du fichier ELF
+   paramètres : un fichier ELF ouvert en ecriture, la structure Elf32 contenant les donnees
+   				du fichier
+   valeur de retour : 0 si tout s'est bien passe, -1 sinon
+   effets de bord : modifie le fichier ELF et la structure Elf32
+*/
+int supprime_rel_sections(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata);
+
 /*--- Autre --*/
 
-/*
-	swap_endianess
-	description : inverse l'endianess des valeurs de l'entete 
-	paramètres : entete
+/* swap_endianess_XXX
+	description : inverse l'endianess des valeurs de la structure donnee
+	paramètres : un pointeur vers la structure a modifier
 	valeur de retour : aucune
 	effet de bord : modifie la structure	
 */
@@ -94,5 +112,12 @@ const char* get_symtype(unsigned char st_info);
 const char* get_symbind(unsigned char st_info);
 const char* get_section_name(Elf32 elfdata, int index);
 const char *get_reloc_type(Elf32_Word type);
+
+/* find_shstrtab_index: renvoie l'indice de la table des strings des sections (pas vraiment équiv à entente.e_shstrndx) */
+int find_shstrtab_index(Elf32 elfdata);
+/* get_file_size: renvoie la taille en octets de file ouvert en lecture ou ecriture */
+size_t get_file_size(FILE *file);
+/* copy_file: copie le fichier source dans dest et renvoie le nombre d'octets écrites correctement */
+size_t copy_file(FILE *source, FILE *dest);
 
 #endif

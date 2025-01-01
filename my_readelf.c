@@ -16,6 +16,7 @@ void help() {
     printf("  -x <i>    Affiche le contenu de la section spécifiée par l'index i\n");
     printf("  -s        Affiche la table de symbole du fichier ELF\n");
     printf("  -r        Affiche la table de relocation du fichier ELF\n");
+    printf("  -R <dest> Copie dans dest fichier_elf en suupprimant les sections contenant des tables de réimplantations\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -29,7 +30,10 @@ int main(int argc, char *argv[]) {
     Elf32_Shdr *shtable = NULL;
     Elf32_Sym *symtable = NULL;
     Elf32_Reltab reltab = {NULL, 0};
+    FILE *fichier_elf = NULL;
+    FILE *fichier_dest = NULL;
 
+    char *endptr = NULL;
     char *sh_strtab = NULL;
     char *sym_strtab = NULL;
 
@@ -39,10 +43,11 @@ int main(int argc, char *argv[]) {
     int afficher_reltab = 0;
     int section_index = -1; 
     int symtabIndex = -1;
+    int supprime_rel = 0;
 
     // Utilisation de getopt pour gérer les options -h et -S,etc...
     int opt;
-    while ((opt = getopt(argc, argv, "hSx:sr")) != -1) {
+    while ((opt = getopt(argc, argv, "hSx:srR:")) != -1) {
         switch (opt) {
             case 'h':  // Option pour afficher l'entete
                 afficher_header = 1;
@@ -51,9 +56,13 @@ int main(int argc, char *argv[]) {
                 afficher_shtable = 1;
                 break;
             case 'x':  // Option pour afficher le contenu de la section
-                // Vérification si l'argument passé est un entier
-                if (optarg != NULL){
-                        section_index = atoi(optarg);  // Convertir l'argument en entier
+                if (optarg != NULL) {
+                    section_index = (int)strtol(optarg, &endptr, 10);  // Convertir l'argument en entier
+                    if (*endptr != '\0' || *optarg == '\0') {
+                        fprintf(stderr, "Erreur : L'index de section doit être un entier\n");
+                        help();
+                        return 1;
+                    }
                 }
                 break;
             case 's':  // Option pour afficher la table des sections
@@ -61,6 +70,16 @@ int main(int argc, char *argv[]) {
                 break;
             case 'r':  // Option pour afficher la table des sections
                 afficher_reltab = 1;
+                break;
+            case 'R':  // Option pour supprimer les sections de type SHT_REL
+                supprime_rel = 1;
+                if (optarg != NULL) {
+                    fichier_dest = fopen(optarg, "wb");
+                    if (!fichier_dest) {
+                        fprintf(stderr, "Erreur durant l'ouverture du fichier %s en écriture\n", optarg);
+                        return 1;
+                    }
+                }
                 break;
             default:
                 help();
@@ -75,16 +94,16 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    FILE *fichier = fopen(argv[optind], "rb");
-    if (!fichier) {
-        fprintf(stderr, "Erreur : Impossible d'ouvrir le fichier %s\n", argv[optind]);
+    fichier_elf = fopen(argv[optind], "rb");
+    if (!fichier_elf) {
+        fprintf(stderr, "Erreur : Impossible d'ouvrir le fichier %s en lecture\n", argv[optind]);
         return 1;
     }
 
     Elf32 elfdata = {*elfhdr, shtable, symtable, reltab, sh_strtab, sym_strtab};
 
     // lecture de l'en-tête du fichier ELF
-    read_header(fichier, &(elfdata.elfhdr));
+    read_header(fichier_elf, &(elfdata.elfhdr));
     if((elfdata.elfhdr).e_ident[EI_CLASS] != ELFCLASS32){
         printf("Erreur, Pas ELF32 !\n");
         return 1;
@@ -93,10 +112,10 @@ int main(int argc, char *argv[]) {
         affiche_header(elfdata.elfhdr);
 
     // lecture de la table des sections
-    read_shtable(fichier, &(elfdata.elfhdr), &(elfdata.shtable));
+    read_shtable(fichier_elf, &(elfdata.elfhdr), &(elfdata.shtable));
     // On lit les tables des chaines de caractères .shstrtab et .strtab
-    read_strtab(fichier, &elfdata, ".shstrtab");
-    read_strtab(fichier, &elfdata, ".strtab");
+    read_strtab(fichier_elf, &elfdata, ".shstrtab");
+    read_strtab(fichier_elf, &elfdata, ".strtab");
     if (afficher_shtable)
         affiche_shtable(&(elfdata.elfhdr), elfdata.shtable, elfdata.sh_strtab);
     
@@ -107,19 +126,32 @@ int main(int argc, char *argv[]) {
         else if (section_index < 0 || section_index >= get_shnum(&elfdata.elfhdr) )
             printf("readelf: Warning: Section %d was not dumped because it does not exist!.\n", section_index);
         else
-            affiche_contenu_section(fichier, elfdata.shtable, elfdata.sh_strtab, section_index);
+            affiche_contenu_section(fichier_elf, elfdata.shtable, elfdata.sh_strtab, section_index);
     }
 
     // lecture de la table des symboles
-    read_symtable(fichier, &(elfdata.symtable), &(elfdata.elfhdr), &(elfdata.shtable), &symtabIndex);
+    read_symtable(fichier_elf, &(elfdata.symtable), &(elfdata.elfhdr), &(elfdata.shtable), &symtabIndex);
     if (afficher_symboles)
         affiche_symtable(elfdata, symtabIndex);
 
     // lecture de la table des relocations
-    read_reltab(fichier, &elfdata);
+    read_reltab(fichier_elf, &elfdata);
     if (afficher_reltab)
         affiche_reltab(elfdata);
     
+    // Supprimer les sections qui contiennent des tables de réimplantations
+    if (supprime_rel) {
+        supprime_rel_sections(fichier_elf, fichier_dest, &elfdata);
+        fclose(fichier_dest);
+    }
+
+
+
+
+
+
+
+
     free(elfhdr);
     free(shtable);
     free(symtable);
@@ -127,7 +159,7 @@ int main(int argc, char *argv[]) {
     free(sh_strtab);
     free(sym_strtab);
 
-    fclose(fichier);
+    fclose(fichier_elf);
 
     return 0;
 }

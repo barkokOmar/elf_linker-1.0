@@ -252,12 +252,18 @@ size_t read_strtab(FILE *file, Elf32 *elfdata, const char *section_name) {
 		strtab_index = get_shstrndx(&(elfdata->elfhdr));
 	} else { // on cherche l'indice de la bonne section
 		assert(elfdata->sh_strtab);
+		/*
+		do {
+			is_right_section = !strcmp(section_name, get_section_name(*elfdata, strtab_index));
+			strtab_index++;
+		} while ( strtab_index < get_shnum(&(elfdata->elfhdr)) && !is_right_section );
+		*/
 		is_right_section = !strcmp(section_name, get_section_name(*elfdata, strtab_index));
-		while ( strtab_index < get_shnum(&(elfdata->elfhdr)) && !is_right_section ) {
+		while ( strtab_index < get_shnum(&(elfdata->elfhdr))-1 && !is_right_section ) {
 			strtab_index++;
 			is_right_section = !strcmp(section_name, get_section_name(*elfdata, strtab_index));
 		}
-		assert(is_right_section);
+		assert(is_right_section);	// on doit trouver la section
 	}
 	
 	strtab_section = elfdata->shtable[strtab_index];
@@ -597,8 +603,131 @@ int affiche_reltab(Elf32 elfdata) {
 	return 0;
 }
 
+///////////// Phase 2 /////////////
 
+int find_section_index(Elf32 elfdata, const char *section_name) {
+	assert(elfdata.shtable);
+	
+	Elf32_Shdr *shtable = elfdata.shtable;
+	Elf32_Ehdr *elfhdr = &(elfdata.elfhdr);
+	const char *sh_strtab = elfdata.sh_strtab;
+	int section_index = 0;
+	int is_right_section = 0;
 
+	while ( section_index < get_shnum(elfhdr) && !is_right_section ) {
+		is_right_section = !strcmp(section_name, &sh_strtab[shtable[section_index].sh_name]);
+		section_index++;
+	}
+	assert(is_right_section);		// la section doit exister
+	return section_index;
+}
+
+int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
+	assert(file);
+	assert(elfdata);
+	assert(elfdata->shtable);
+
+	Elf32_Off shoff;
+	Elf32_Half shnum;
+	Elf32_Ehdr *elfhdr = &(elfdata->elfhdr);
+	assert(index >= 0 && index < get_shnum(elfhdr));
+	size_t taille_ecrite = 0;
+	int i = 0;
+
+	// supprimer la section dans shtable de elfdata
+	for (i=index; i < get_shnum(elfhdr); i++) {
+		elfdata->shtable[i] = elfdata->shtable[i+1];
+		printf("i = %d\n", i);	// debug
+	}
+	elfdata->shtable = (Elf32_Shdr*)realloc(elfdata->shtable, (get_shnum(elfhdr)-1) * sizeof(Elf32_Shdr));
+	assert(elfdata->shtable);
+
+	// mettre à jour : shnum, shstrndx de l'entete
+	elfhdr->e_shnum -= 1;
+	elfhdr->e_shstrndx = find_section_index(*elfdata, ".shstrtab");
+	fprintf(stdout, "shnum = %d\n", elfhdr->e_shnum);	// debug
+
+	// ecrire la nouvelle entete et shtable dans le fichier le fichier destination
+	shoff = get_shoff(elfhdr);	// on stock avant de changer l'endianess
+	shnum = get_shnum(elfhdr);
+	if (!is_big_endian()) {		// on swap les octets si la machine est en little endian
+		swap_endianess_ehdr(elfhdr);
+		for (int i = 0; i < shnum; i++)
+			swap_endianess_section_table(&(elfdata->shtable[i]));
+	}
+	
+	// on commence par ecrire l'entete
+	fseek(file, 0, SEEK_SET);
+	taille_ecrite = fwrite(elfhdr, sizeof(Elf32_Ehdr), 1, file);
+	assert(taille_ecrite == 1);
+	// puis shtable
+	fseek(file, shoff, SEEK_SET);
+	taille_ecrite = fwrite(elfdata->shtable, sizeof(Elf32_Shdr), shnum, file);
+	assert(taille_ecrite == shnum);
+
+	if (!is_big_endian()) {		// on reswap les octets pour revenir à l'etat initial
+		swap_endianess_ehdr(elfhdr);
+		for (int i = 0; i < shnum; i++)
+			swap_endianess_section_table(&(elfdata->shtable[i]));
+	}
+
+	return 0;	// a revoir pour la valeur de retour
+}
+
+size_t get_file_size(FILE *file) {
+	assert(file);
+	fseek(file, 0, SEEK_END);
+	size_t taille = ftell(file);
+	rewind(file);
+	return taille;
+}
+
+size_t copy_file(FILE *source, FILE *dest) {
+	assert(source);
+	assert(dest);
+	size_t taille_lue = 0;
+	size_t taille_ecrite = 0;
+	const int taille_buffer = get_file_size(source);
+	char buffer[taille_buffer];
+	
+	taille_lue = fread(buffer, 1, taille_buffer, source);
+	assert(taille_lue == taille_buffer);
+
+	taille_ecrite = fwrite(buffer, 1, taille_buffer, dest);
+	assert(taille_ecrite == taille_buffer);
+
+	assert(taille_lue == taille_ecrite);
+	rewind(source);
+	rewind(dest);
+
+	return taille_lue;
+}
+
+int supprime_rel_sections(FILE *source, FILE *dest, Elf32 *elfdata) {
+	assert(source);
+	assert(dest);
+	assert(elfdata);
+	assert(elfdata->shtable);
+
+	Elf32_Word section_type;
+	
+	// on copie source dans dest
+	rewind(source);
+	rewind(dest);
+	copy_file(source, dest);
+	
+	
+	// on cherche les tables de relocations
+	for (int i=0; i < get_shnum(&elfdata->elfhdr); i++) {
+		section_type = elfdata->shtable[i].sh_type;
+		if (is_rel(section_type)) {
+			supprime_sh(dest, elfdata, i);
+			i--;	// on décrémente pour ne pas sauter une section
+		}
+	}
+
+	return 0;
+}
 
 
 
