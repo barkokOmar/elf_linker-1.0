@@ -32,7 +32,8 @@ int main(int argc, char *argv[]) {
     Elf32_Reltab reltab = {NULL, 0};
     FILE *fichier_elf = NULL;
     FILE *fichier_dest = NULL;
-
+    Elf32_Word section_type;
+    
     char *endptr = NULL;
     char *sh_strtab = NULL;
     char *sym_strtab = NULL;
@@ -121,7 +122,8 @@ int main(int argc, char *argv[]) {
     
     // Afficher le contenue de la section spécifié par l'index section_index
     if ( section_index != -1 ) {
-        if (section_index == 0)
+        section_type = elfdata.shtable[section_index].sh_type;
+        if (section_type== SHT_NULL || section_type == SHT_NOBITS)
             printf("Section '' has no data to dump.\n");
         else if (section_index < 0 || section_index >= get_shnum(&elfdata.elfhdr) )
             printf("readelf: Warning: Section %d was not dumped because it does not exist!.\n", section_index);

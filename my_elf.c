@@ -329,9 +329,8 @@ void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_dat
 void affiche_contenu_section(FILE *file, Elf32_Shdr *shtable, char *shstrtab_data, int sectionIndex) {
 	assert(file);
 	assert(shtable);
-
     Elf32_Shdr section = shtable[sectionIndex];
-
+	
     fseek(file, section.sh_offset, SEEK_SET);
 
     uint8_t *section_data = (uint8_t*)malloc(section.sh_size);
@@ -619,7 +618,7 @@ int find_section_index(Elf32 elfdata, const char *section_name) {
 		section_index++;
 	}
 	assert(is_right_section);		// la section doit exister
-	return section_index;
+	return section_index - 1;
 }
 
 int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
@@ -637,7 +636,6 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 	// supprimer la section dans shtable de elfdata
 	for (i=index; i < get_shnum(elfhdr); i++) {
 		elfdata->shtable[i] = elfdata->shtable[i+1];
-		printf("i = %d\n", i);	// debug
 	}
 	elfdata->shtable = (Elf32_Shdr*)realloc(elfdata->shtable, (get_shnum(elfhdr)-1) * sizeof(Elf32_Shdr));
 	assert(elfdata->shtable);
@@ -645,7 +643,6 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 	// mettre à jour : shnum, shstrndx de l'entete
 	elfhdr->e_shnum -= 1;
 	elfhdr->e_shstrndx = find_section_index(*elfdata, ".shstrtab");
-	fprintf(stdout, "shnum = %d\n", elfhdr->e_shnum);	// debug
 
 	// ecrire la nouvelle entete et shtable dans le fichier le fichier destination
 	shoff = get_shoff(elfhdr);	// on stock avant de changer l'endianess
