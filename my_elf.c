@@ -628,7 +628,6 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 	assert(file);
 	assert(elfdata);
 	assert(elfdata->shtable);
-	assert(elfdata->symtable);
 
 	Elf32_Off shoff;
 	Elf32_Half shnum;
@@ -637,7 +636,7 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 	Elf32_Ehdr *elfhdr = &(elfdata->elfhdr);
 	assert(index >= 0 && index < get_shnum(elfhdr));
 	size_t taille_ecrite = 0;
-	int old_shndx, new_shndx;
+	int old_shndx, new_shndx, nombreDeSymboles;
 	int i = 0;
 
 	// supprimer la section dans shtable de elfdata
@@ -648,30 +647,36 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 		if (is_symatble(elfdata->shtable, new_shndx))
 			elfdata->symtabIndex = new_shndx;
 		// on met à jour les index des symboles
-		update_sym_shndx(elfdata, old_shndx, new_shndx);
+		update_sym_shndx(elfdata, old_shndx, new_shndx);	
 	}
-	
+	elfdata->shtable = (Elf32_Shdr*)realloc(elfdata->shtable, (get_shnum(elfhdr)-1) * sizeof(Elf32_Shdr));
+	assert(elfdata->shtable);
+
 	// mettre à jour : shnum, shstrndx de l'entete
 	elfhdr->e_shnum -= 1;
 	elfhdr->e_shstrndx = find_section_index(*elfdata, ".shstrtab");
-	// on réalloue la mémoire pour bien supprimer la section
-	elfdata->shtable = (Elf32_Shdr*)realloc(elfdata->shtable, get_shnum(elfhdr) * sizeof(Elf32_Shdr));
-	assert(elfdata->shtable);
 
-
-	// On écrit les modifications dans le fichier
-	shoff = get_shoff(elfhdr);
+	// ecrire la nouvelle entete et shtable dans le fichier le fichier destination
+	shoff = get_shoff(elfhdr);	// on stock avant de changer l'endianess
 	shnum = get_shnum(elfhdr);
 	symoff = elfdata->shtable[elfdata->symtabIndex].sh_offset;
 	symtab_size = elfdata->shtable[elfdata->symtabIndex].sh_size;
-	if (!is_big_endian())		// on swap les octets si la machine est en little endian
-		swap_endianess_elfdata(elfdata);
+	nombreDeSymboles = symtab_size / sizeof(Elf32_Sym);
+	if (!is_big_endian()) {		// on swap les octets si la machine est en little endian
+		//swap_endianess_elfdata(elfdata);//ça ne marche pas (erreur de segmentation)
+		swap_endianess_elfhdr(elfhdr);
+		for (int i = 0; i < shnum; i++)
+			swap_endianess_shtable(&(elfdata->shtable[i]));
+
+		for (int i = 0; i < nombreDeSymboles; i++)
+			swap_endianess_symtable(&(elfdata->symtable[i]));
+	}
 	
 	// on commence par ecrire l'entete
 	fseek(file, 0, SEEK_SET);
 	taille_ecrite = fwrite(elfhdr, sizeof(Elf32_Ehdr), 1, file);
 	assert(taille_ecrite == 1);
-	// shtable
+	// puis shtable
 	fseek(file, shoff, SEEK_SET);
 	taille_ecrite = fwrite(elfdata->shtable, sizeof(Elf32_Shdr), shnum, file);
 	assert(taille_ecrite == shnum);
@@ -680,11 +685,19 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 	taille_ecrite = fwrite(elfdata->symtable, 1, symtab_size, file);
 	assert(taille_ecrite == symtab_size);
 
-	if (!is_big_endian())		// on reswap les octets pour revenir à l'etat initial
-		swap_endianess_elfdata(elfdata);
+	if (!is_big_endian()) {// on reswap les octets pour revenir à l'etat initial
+		//swap_endianess_elfdata(elfdata);// ça ne marche pas (erreur de segmentation)
+		swap_endianess_elfhdr(elfhdr);
+		for (int i = 0; i < shnum; i++)
+			swap_endianess_shtable(&(elfdata->shtable[i]));
+
+		for (int i = 0; i < nombreDeSymboles; i++)
+			swap_endianess_symtable(&(elfdata->symtable[i]));
+	}
 
 	return 0;	// a revoir pour la valeur de retour
 }
+
 
 size_t get_file_size(FILE *file) {
 	assert(file);
@@ -910,10 +923,18 @@ void swap_endianess_elfdata(Elf32 *elfdata) {
 	assert(elfdata->symtable);
 
 	swap_endianess_elfhdr(&(elfdata->elfhdr));
+
 	for (int i = 0; i < get_shnum(&(elfdata->elfhdr)); i++) {
 		swap_endianess_shtable(&(elfdata->shtable[i]));
-		swap_endianess_symtable(&(elfdata->symtable[i]));
 	}
+
+	int symtabIndex = elfdata->symtabIndex;
+	Elf32_Shdr symtable_section = elfdata->shtable[symtabIndex];
+	Elf32_Word symtable_size = symtable_section.sh_size ;
+	int nombreDeSymboles = symtable_size / sizeof(Elf32_Sym);
+	for (int i = 0; i < nombreDeSymboles; i++)
+		swap_endianess_symtable(&(elfdata->symtable[i]));
+
 }
 
 int update_sym_shndx(Elf32 *elfdata, int old_shndx, int new_shndx) {
