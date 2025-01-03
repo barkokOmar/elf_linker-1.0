@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    Elf32 elfdata = {*elfhdr, shtable, symtable, reltab, sh_strtab, sym_strtab};
+    Elf32 elfdata = {*elfhdr, shtable, symtable, reltab, sh_strtab, sym_strtab, symtabIndex};
 
     // lecture de l'en-tête du fichier ELF
     read_header(fichier_elf, &(elfdata.elfhdr));
@@ -132,9 +132,9 @@ int main(int argc, char *argv[]) {
     }
 
     // lecture de la table des symboles
-    read_symtable(fichier_elf, &(elfdata.symtable), &(elfdata.elfhdr), &(elfdata.shtable), &symtabIndex);
+    read_symtable(fichier_elf, &(elfdata.symtable), &(elfdata.elfhdr), &(elfdata.shtable), &elfdata.symtabIndex);
     if (afficher_symboles)
-        affiche_symtable(elfdata, symtabIndex);
+        affiche_symtable(elfdata);
 
     // lecture de la table des relocations
     read_reltab(fichier_elf, &elfdata);

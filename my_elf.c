@@ -7,7 +7,7 @@
 #include "util.h"
 #include "my_elf.h"
 
-void swap_endianess_ehdr(Elf32_Ehdr *entete) {
+void swap_endianess_elfhdr(Elf32_Ehdr *entete) {
 	assert(entete);
 	entete->e_type		 = reverse_2(entete->e_type);
 	entete->e_machine	 = reverse_2(entete->e_machine);
@@ -84,7 +84,7 @@ size_t read_header(FILE *fichier, Elf32_Ehdr *entete) {
 	taille_lue += read_Half(&(entete->e_shstrndx), fichier);
 
 	if (!is_big_endian())
-		swap_endianess_ehdr(entete);
+		swap_endianess_elfhdr(entete);
 
 	return taille_lue;
 }
@@ -192,7 +192,7 @@ void affiche_header(Elf32_Ehdr entete) {
     printf("  Section header string table index: %d\n", entete.e_shstrndx);
 }
 ///////////////////////////////////////////////////////////////////
-void swap_endianess_section_table(Elf32_Shdr *shtable) {
+void swap_endianess_shtable(Elf32_Shdr *shtable) {
 	assert(shtable);
 	shtable->sh_name = reverse_4(shtable->sh_name);
 	shtable->sh_type = reverse_4(shtable->sh_type);
@@ -245,25 +245,21 @@ size_t read_strtab(FILE *file, Elf32 *elfdata, const char *section_name) {
 	size_t taille_lue = 0;
 	size_t taille_strtab = 0;
 	int strtab_index = 0;
-	int is_right_section = 0;
 	Elf32_Shdr strtab_section;
 
 	if (!strcmp(section_name, ".shstrtab")) {
 		strtab_index = get_shstrndx(&(elfdata->elfhdr));
 	} else { // on cherche l'indice de la bonne section
 		assert(elfdata->sh_strtab);
+		strtab_index = find_section_index(*elfdata, section_name);
 		/*
-		do {
-			is_right_section = !strcmp(section_name, get_section_name(*elfdata, strtab_index));
-			strtab_index++;
-		} while ( strtab_index < get_shnum(&(elfdata->elfhdr)) && !is_right_section );
-		*/
 		is_right_section = !strcmp(section_name, get_section_name(*elfdata, strtab_index));
 		while ( strtab_index < get_shnum(&(elfdata->elfhdr))-1 && !is_right_section ) {
 			strtab_index++;
 			is_right_section = !strcmp(section_name, get_section_name(*elfdata, strtab_index));
 		}
 		assert(is_right_section);	// on doit trouver la section
+		*/	
 	}
 	
 	strtab_section = elfdata->shtable[strtab_index];
@@ -311,7 +307,7 @@ void read_shtable(FILE *file, Elf32_Ehdr *elfhdr, Elf32_Shdr **shtable) {
 
     if (!is_big_endian()) {
 		for (int i = 0; i < get_shnum(elfhdr); i++)
-			swap_endianess_section_table(&(*shtable)[i]);
+			swap_endianess_shtable(&(*shtable)[i]);
 	}
 }
 
@@ -433,7 +429,13 @@ void read_symtable(FILE *file, Elf32_Sym **symtable, Elf32_Ehdr *elfhdr, Elf32_S
 
 }
 
-void affiche_symtable(Elf32 elfdata, int symtabIndex) {
+void affiche_symtable(Elf32 elfdata) {
+	assert(elfdata.symtable);
+	assert(elfdata.shtable);
+	assert(elfdata.sh_strtab);
+	assert(elfdata.sym_strtab);
+
+	int symtabIndex = elfdata.symtabIndex;
 	Elf32_Shdr symtable_section = elfdata.shtable[symtabIndex];
 	Elf32_Word symtable_size = symtable_section.sh_size ;
 	Elf32_Sym symbole;
@@ -621,52 +623,65 @@ int find_section_index(Elf32 elfdata, const char *section_name) {
 	return section_index - 1;
 }
 
+
 int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 	assert(file);
 	assert(elfdata);
 	assert(elfdata->shtable);
+	assert(elfdata->symtable);
 
 	Elf32_Off shoff;
 	Elf32_Half shnum;
+	Elf32_Off symoff;
+	Elf32_Word symtab_size;
 	Elf32_Ehdr *elfhdr = &(elfdata->elfhdr);
 	assert(index >= 0 && index < get_shnum(elfhdr));
 	size_t taille_ecrite = 0;
+	int old_shndx, new_shndx;
 	int i = 0;
 
 	// supprimer la section dans shtable de elfdata
 	for (i=index; i < get_shnum(elfhdr); i++) {
-		elfdata->shtable[i] = elfdata->shtable[i+1];
+		old_shndx = i+1;
+		new_shndx = i;
+		elfdata->shtable[new_shndx] = elfdata->shtable[old_shndx];
+		if (is_symatble(elfdata->shtable, new_shndx))
+			elfdata->symtabIndex = new_shndx;
+		// on met à jour les index des symboles
+		update_sym_shndx(elfdata, old_shndx, new_shndx);
 	}
-	elfdata->shtable = (Elf32_Shdr*)realloc(elfdata->shtable, (get_shnum(elfhdr)-1) * sizeof(Elf32_Shdr));
-	assert(elfdata->shtable);
-
+	
 	// mettre à jour : shnum, shstrndx de l'entete
 	elfhdr->e_shnum -= 1;
 	elfhdr->e_shstrndx = find_section_index(*elfdata, ".shstrtab");
+	// on réalloue la mémoire pour bien supprimer la section
+	elfdata->shtable = (Elf32_Shdr*)realloc(elfdata->shtable, get_shnum(elfhdr) * sizeof(Elf32_Shdr));
+	assert(elfdata->shtable);
 
-	// ecrire la nouvelle entete et shtable dans le fichier le fichier destination
-	shoff = get_shoff(elfhdr);	// on stock avant de changer l'endianess
+
+	// On écrit les modifications dans le fichier
+	shoff = get_shoff(elfhdr);
 	shnum = get_shnum(elfhdr);
-	if (!is_big_endian()) {		// on swap les octets si la machine est en little endian
-		swap_endianess_ehdr(elfhdr);
-		for (int i = 0; i < shnum; i++)
-			swap_endianess_section_table(&(elfdata->shtable[i]));
-	}
+	symoff = elfdata->shtable[elfdata->symtabIndex].sh_offset;
+	symtab_size = elfdata->shtable[elfdata->symtabIndex].sh_size;
+	if (!is_big_endian())		// on swap les octets si la machine est en little endian
+		swap_endianess_elfdata(elfdata);
 	
 	// on commence par ecrire l'entete
 	fseek(file, 0, SEEK_SET);
 	taille_ecrite = fwrite(elfhdr, sizeof(Elf32_Ehdr), 1, file);
 	assert(taille_ecrite == 1);
-	// puis shtable
+	// shtable
 	fseek(file, shoff, SEEK_SET);
 	taille_ecrite = fwrite(elfdata->shtable, sizeof(Elf32_Shdr), shnum, file);
 	assert(taille_ecrite == shnum);
+	// symtable
+	fseek(file, symoff, SEEK_SET);
+	taille_ecrite = fwrite(elfdata->symtable, 1, symtab_size, file);
+	assert(taille_ecrite == symtab_size);
 
-	if (!is_big_endian()) {		// on reswap les octets pour revenir à l'etat initial
-		swap_endianess_ehdr(elfhdr);
-		for (int i = 0; i < shnum; i++)
-			swap_endianess_section_table(&(elfdata->shtable[i]));
-	}
+	if (!is_big_endian())		// on reswap les octets pour revenir à l'etat initial
+		swap_endianess_elfdata(elfdata);
 
 	return 0;	// a revoir pour la valeur de retour
 }
@@ -712,7 +727,6 @@ int supprime_rel_sections(FILE *source, FILE *dest, Elf32 *elfdata) {
 	rewind(source);
 	rewind(dest);
 	copy_file(source, dest);
-	
 	
 	// on cherche les tables de relocations
 	for (int i=0; i < get_shnum(&elfdata->elfhdr); i++) {
@@ -888,4 +902,37 @@ const char *get_reloc_type(Elf32_Word type) {
 		default:
 			return "UNKNOWN";
 	}
+}
+
+void swap_endianess_elfdata(Elf32 *elfdata) {
+	assert(elfdata);
+	assert(elfdata->shtable);
+	assert(elfdata->symtable);
+
+	swap_endianess_elfhdr(&(elfdata->elfhdr));
+	for (int i = 0; i < get_shnum(&(elfdata->elfhdr)); i++) {
+		swap_endianess_shtable(&(elfdata->shtable[i]));
+		swap_endianess_symtable(&(elfdata->symtable[i]));
+	}
+}
+
+int update_sym_shndx(Elf32 *elfdata, int old_shndx, int new_shndx) {
+	assert(elfdata);
+	assert(elfdata->shtable);
+	assert(elfdata->symtable);
+
+	Elf32_Sym *symtable = elfdata->symtable;
+	Elf32_Shdr *shtable = elfdata->shtable;
+
+	int symtabIndex = elfdata->symtabIndex;
+	Elf32_Shdr symtable_section = shtable[symtabIndex];
+	Elf32_Word symtable_size = symtable_section.sh_size ;
+	int nombreDeSymboles = symtable_size / sizeof(Elf32_Sym);
+	
+	for (int i = 0; i < nombreDeSymboles; i++) {
+		if (symtable[i].st_shndx == old_shndx)
+			symtable[i].st_shndx = new_shndx;
+	}
+
+	return 0;	// a revoir pour la valeur de retour
 }

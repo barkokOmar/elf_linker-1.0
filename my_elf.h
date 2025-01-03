@@ -26,6 +26,7 @@ typedef struct {
    Elf32_Reltab reltab;
    char *sh_strtab;
    char *sym_strtab;
+   int symtabIndex;
 } Elf32;
 
 /*--- Interfaces Lecture --*/
@@ -54,7 +55,7 @@ void read_reltab(FILE *file, Elf32 *elfdata);
 void affiche_header(Elf32_Ehdr entete);
 void affiche_shtable(Elf32_Ehdr *elfhdr, Elf32_Shdr *shtable, char *shstrtab_data);
 void affiche_contenu_section(FILE *file, Elf32_Shdr *shtable, char *shstrtab_data, int sectionIndex);
-void affiche_symtable(Elf32 elfdata, int symtabIndex);
+void affiche_symtable(Elf32 elfdata);
 int affiche_reltab(Elf32 elfdata);
 
 /*--- Interfaces Phase2 --*/
@@ -85,9 +86,10 @@ int supprime_rel_sections(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata
 	valeur de retour : aucune
 	effet de bord : modifie la structure	
 */
-void swap_endianess_ehdr(Elf32_Ehdr *entete);
-void swap_endianess_section_table(Elf32_Shdr *shtable);
+void swap_endianess_elfhdr(Elf32_Ehdr *entete);
+void swap_endianess_shtable(Elf32_Shdr *shtable);
 void swap_endianess_symtable(Elf32_Sym *symtable);
+void swap_endianess_elfdata(Elf32 *elfdata);
 
 
 Elf32_Half get_type(Elf32_Ehdr *entete);
@@ -114,10 +116,12 @@ const char* get_section_name(Elf32 elfdata, int index);
 const char *get_reloc_type(Elf32_Word type);
 
 /* find_shstrtab_index: renvoie l'indice de la table des strings des sections (pas vraiment équiv à entente.e_shstrndx) */
-int find_shstrtab_index(Elf32 elfdata);
+int find_section_index(Elf32 elfdata, const char *section_name);
 /* get_file_size: renvoie la taille en octets de file ouvert en lecture ou ecriture */
 size_t get_file_size(FILE *file);
 /* copy_file: copie le fichier source dans dest et renvoie le nombre d'octets écrites correctement */
 size_t copy_file(FILE *source, FILE *dest);
+/* update_sym_shndx: remplace les symboles qui on un numéros de section old_shndx par new_shndx dans la  table des symboles */
+int update_sym_shndx(Elf32 *elfdata, int old_shndx, int new_shndx);
 
 #endif
