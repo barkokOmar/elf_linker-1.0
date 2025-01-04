@@ -624,7 +624,7 @@ int find_section_index(Elf32 elfdata, const char *section_name) {
 }
 
 
-int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
+int supprime_sh(FILE *file, Elf32 *elfdata, int index, Elf32_Addr addr_text, Elf32_Addr addr_data) {
 	assert(file);
 	assert(elfdata);
 	assert(elfdata->shtable);
@@ -649,19 +649,35 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 		// on met à jour les index des symboles
 		update_sym_shndx(elfdata, old_shndx, new_shndx);	
 	}
+
 	elfdata->shtable = (Elf32_Shdr*)realloc(elfdata->shtable, (get_shnum(elfhdr)-1) * sizeof(Elf32_Shdr));
 	assert(elfdata->shtable);
 
 	// mettre à jour : shnum, shstrndx de l'entete
 	elfhdr->e_shnum -= 1;
 	elfhdr->e_shstrndx = find_section_index(*elfdata, ".shstrtab");
-
+     
 	// ecrire la nouvelle entete et shtable dans le fichier le fichier destination
 	shoff = get_shoff(elfhdr);	// on stock avant de changer l'endianess
 	shnum = get_shnum(elfhdr);
 	symoff = elfdata->shtable[elfdata->symtabIndex].sh_offset;
 	symtab_size = elfdata->shtable[elfdata->symtabIndex].sh_size;
 	nombreDeSymboles = symtab_size / sizeof(Elf32_Sym);
+	for (int i = 0; i < nombreDeSymboles; i++) {
+
+		Elf32_Sym symbole = elfdata->symtable[i];
+		int section_index = symbole.st_shndx;
+		
+		if (section_index == SHN_UNDEF && section_index == SHN_ABS)	// Vérifier si le symbole est dans une section valide
+			continue;
+		if (section_index == find_section_index(*elfdata, ".text"))
+			symbole.st_value += addr_text;// L'adresse absolue du symbole est l'adresse de la section + l'offset du symbole dans la section
+
+		if (section_index == find_section_index(*elfdata, ".data"))
+			symbole.st_value += addr_data;// L'adresse absolue du symbole est l'adresse de la section + l'offset du symbole dans la section
+
+		
+	}
 	if (!is_big_endian()) {		// on swap les octets si la machine est en little endian
 		//swap_endianess_elfdata(elfdata);//ça ne marche pas (erreur de segmentation)
 		swap_endianess_elfhdr(elfhdr);
@@ -728,7 +744,7 @@ size_t copy_file(FILE *source, FILE *dest) {
 	return taille_lue;
 }
 
-int supprime_rel_sections(FILE *source, FILE *dest, Elf32 *elfdata) {
+int supprime_rel_sections(FILE *source, FILE *dest, Elf32 *elfdata, Elf32_Addr addr_text, Elf32_Addr addr_data) {
 	assert(source);
 	assert(dest);
 	assert(elfdata);
@@ -745,7 +761,7 @@ int supprime_rel_sections(FILE *source, FILE *dest, Elf32 *elfdata) {
 	for (int i=0; i < get_shnum(&elfdata->elfhdr); i++) {
 		section_type = elfdata->shtable[i].sh_type;
 		if (is_rel(section_type)) {
-			supprime_sh(dest, elfdata, i);
+			supprime_sh(dest, elfdata, i, addr_text, addr_data);
 			i--;	// on décrémente pour ne pas sauter une section
 		}
 	}

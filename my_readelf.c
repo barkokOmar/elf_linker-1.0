@@ -143,7 +143,11 @@ int main(int argc, char *argv[]) {
     
     // Supprimer les sections qui contiennent des tables de réimplantations
     if (supprime_rel) {
-        supprime_rel_sections(fichier_elf, fichier_dest, &elfdata);
+        int index_text = find_section_index(elfdata, ".text");
+        int index_data = find_section_index(elfdata, ".data");
+        Elf32_Addr addr_text = elfdata.shtable[index_text].sh_addr;
+        Elf32_Addr addr_data = elfdata.shtable[index_data].sh_addr;
+        supprime_rel_sections(fichier_elf, fichier_dest, &elfdata, addr_text, addr_data);
         fclose(fichier_dest);
     }
 

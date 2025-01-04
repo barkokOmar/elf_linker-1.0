@@ -67,7 +67,7 @@ int affiche_reltab(Elf32 elfdata);
    valeur de retour : 0 si tout s'est bien passe, -1 sinon
    effets de bord : modifie le fichier ELF et la structure Elf32
 */
-int supprime_sh(FILE *file, Elf32 *elfdata, int index);
+int supprime_sh(FILE *file, Elf32 *elfdata, int index, Elf32_Addr addr_text, Elf32_Addr addr_data);
 
 /* supprime_relsh
    description : supprime les sections de type SHT_REL du fichier ELF
@@ -76,7 +76,7 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index);
    valeur de retour : 0 si tout s'est bien passe, -1 sinon
    effets de bord : modifie le fichier ELF et la structure Elf32
 */
-int supprime_rel_sections(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata);
+int supprime_rel_sections(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata,  Elf32_Addr addr_text, Elf32_Addr addr_data);
 
 /*--- Autre --*/
 
