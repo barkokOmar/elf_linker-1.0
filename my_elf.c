@@ -619,12 +619,15 @@ int find_section_index(Elf32 elfdata, const char *section_name) {
 		is_right_section = !strcmp(section_name, &sh_strtab[shtable[section_index].sh_name]);
 		section_index++;
 	}
-	assert(is_right_section);		// la section doit exister
+	if (!is_right_section){
+		//fprintf(stderr, "find_section_index : erreur, nom de section inexistant\n");
+		return -1;
+	}
 	return section_index - 1;
 }
 
 
-int supprime_sh(FILE *file, Elf32 *elfdata, int index, Elf32_Addr addr_text, Elf32_Addr addr_data) {
+int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 	assert(file);
 	assert(elfdata);
 	assert(elfdata->shtable);
@@ -663,21 +666,6 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index, Elf32_Addr addr_text, Elf
 	symoff = elfdata->shtable[elfdata->symtabIndex].sh_offset;
 	symtab_size = elfdata->shtable[elfdata->symtabIndex].sh_size;
 	nombreDeSymboles = symtab_size / sizeof(Elf32_Sym);
-	for (int i = 0; i < nombreDeSymboles; i++) {
-
-		Elf32_Sym symbole = elfdata->symtable[i];
-		int section_index = symbole.st_shndx;
-		
-		if (section_index == SHN_UNDEF && section_index == SHN_ABS)	// Vérifier si le symbole est dans une section valide
-			continue;
-		if (section_index == find_section_index(*elfdata, ".text"))
-			symbole.st_value += addr_text;// L'adresse absolue du symbole est l'adresse de la section + l'offset du symbole dans la section
-
-		if (section_index == find_section_index(*elfdata, ".data"))
-			symbole.st_value += addr_data;// L'adresse absolue du symbole est l'adresse de la section + l'offset du symbole dans la section
-
-		
-	}
 	if (!is_big_endian()) {		// on swap les octets si la machine est en little endian
 		//swap_endianess_elfdata(elfdata);//ça ne marche pas (erreur de segmentation)
 		swap_endianess_elfhdr(elfhdr);
@@ -744,7 +732,7 @@ size_t copy_file(FILE *source, FILE *dest) {
 	return taille_lue;
 }
 
-int supprime_rel_sections(FILE *source, FILE *dest, Elf32 *elfdata, Elf32_Addr addr_text, Elf32_Addr addr_data) {
+int supprime_rel_sections(FILE *source, FILE *dest, Elf32 *elfdata) {
 	assert(source);
 	assert(dest);
 	assert(elfdata);
@@ -761,7 +749,7 @@ int supprime_rel_sections(FILE *source, FILE *dest, Elf32 *elfdata, Elf32_Addr a
 	for (int i=0; i < get_shnum(&elfdata->elfhdr); i++) {
 		section_type = elfdata->shtable[i].sh_type;
 		if (is_rel(section_type)) {
-			supprime_sh(dest, elfdata, i, addr_text, addr_data);
+			supprime_sh(dest, elfdata, i);
 			i--;	// on décrémente pour ne pas sauter une section
 		}
 	}
@@ -769,8 +757,49 @@ int supprime_rel_sections(FILE *source, FILE *dest, Elf32 *elfdata, Elf32_Addr a
 	return 0;
 }
 
+int corriger_symboles(FILE *source, FILE *dest, Elf32 *elfdata, Elf32_Addr addr_text, Elf32_Addr addr_data){
+	assert(source);
+	assert(dest);
+	assert(elfdata);
 
+	rewind(source);
+	rewind(dest);
+	// on copie source dans dest
+	copy_file(source, dest);
 
+	Elf32_Word symtab_size = elfdata->shtable[elfdata->symtabIndex].sh_size;
+	Elf32_Off symoff = elfdata->shtable[elfdata->symtabIndex].sh_offset;
+	size_t taille_ecrite = 0;
+	int nombreDeSymboles = symtab_size / sizeof(Elf32_Sym);
+   
+	for (int i = 0; i < nombreDeSymboles; i++) {
+
+		Elf32_Sym *symbole = &(elfdata->symtable[i]);
+		int section_index = symbole->st_shndx;
+
+		if (section_index == SHN_UNDEF || section_index == SHN_ABS)
+			continue;
+		if (section_index == find_section_index(*elfdata, ".text"))
+			symbole->st_value += addr_text; 
+
+		if (section_index == find_section_index(*elfdata, ".data"))
+			symbole->st_value += addr_data;
+	}
+	if (!is_big_endian()){		// on swap les octets si la machine est en little endian
+		for (int i = 0; i < nombreDeSymboles; i++)
+			swap_endianess_symtable(&(elfdata->symtable[i]));
+	}
+
+	fseek(dest, symoff, SEEK_SET);	
+	taille_ecrite = fwrite(elfdata->symtable, 1, symtab_size, dest);//file ??
+	assert(taille_ecrite == symtab_size);
+
+	if (!is_big_endian()){		// on reswap les octets pour revenir à l'etat initial
+		for (int i = 0; i < nombreDeSymboles; i++)
+			swap_endianess_symtable(&(elfdata->symtable[i]));
+	}
+	return 0;
+}
 
 Elf32_Half get_type(Elf32_Ehdr *entete) { 
     assert(entete != NULL);

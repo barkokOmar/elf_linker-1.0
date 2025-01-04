@@ -37,15 +37,17 @@ int main(int argc, char *argv[]) {
     char *endptr = NULL;
     char *sh_strtab = NULL;
     char *sym_strtab = NULL;
+    const char *section_name = NULL;
 
     int afficher_header = 0;
     int afficher_shtable = 0;
     int afficher_symboles = 0;
+    int x_opt = 0;
     int afficher_reltab = 0;
     int section_index = -1; 
     int symtabIndex = -1;
     int supprime_rel = 0;
-
+    int affiche_section_par_str = 0;
     // Utilisation de getopt pour gérer les options -h et -S,etc...
     int opt;
     while ((opt = getopt(argc, argv, "hSx:srR:")) != -1) {
@@ -58,11 +60,14 @@ int main(int argc, char *argv[]) {
                 break;
             case 'x':  // Option pour afficher le contenu de la section
                 if (optarg != NULL) {
+                    x_opt = 1;
                     section_index = (int)strtol(optarg, &endptr, 10);  // Convertir l'argument en entier
                     if (*endptr != '\0' || *optarg == '\0') {
-                        fprintf(stderr, "Erreur : L'index de section doit être un entier\n");
-                        help();
-                        return 1;
+                        // fprintf(stderr, "Erreur : L'index de section doit être un entier\n");
+                        // help();
+                        // return 1;
+                        affiche_section_par_str = 1;
+                        section_name = optarg;
                     }
                 }
                 break;
@@ -121,16 +126,24 @@ int main(int argc, char *argv[]) {
         affiche_shtable(&(elfdata.elfhdr), elfdata.shtable, elfdata.sh_strtab);
     
     // Afficher le contenue de la section spécifié par l'index section_index
-    if ( section_index != -1 ) {
-        section_type = elfdata.shtable[section_index].sh_type;
-        if (section_type== SHT_NULL || section_type == SHT_NOBITS)
-            printf("Section '' has no data to dump.\n");
-        else if (section_index < 0 || section_index >= get_shnum(&elfdata.elfhdr) )
-            printf("readelf: Warning: Section %d was not dumped because it does not exist!.\n", section_index);
-        else
-            affiche_contenu_section(fichier_elf, elfdata.shtable, elfdata.sh_strtab, section_index);
+    if (x_opt) {
+        if (affiche_section_par_str)   // Afficher le contenue de la section spécifié par le nom de la section 
+            section_index = find_section_index(elfdata, section_name);
+        if (section_index < 0 || section_index >= get_shnum(&elfdata.elfhdr)){
+            if (affiche_section_par_str)
+                printf("readelf: Warning: Section %s was not dumped because it does not exist!.\n", section_name);
+            else 
+                printf("readelf: Warning: Section %d was not dumped because it does not exist!.\n", section_index);
+        }
+        else {
+            section_type = elfdata.shtable[section_index].sh_type;
+            if (section_type== SHT_NULL || section_type == SHT_NOBITS)
+                printf("Section '' has no data to dump.\n");
+            else
+                affiche_contenu_section(fichier_elf, elfdata.shtable, elfdata.sh_strtab, section_index);
+        }
     }
-
+    
     // lecture de la table des symboles
     read_symtable(fichier_elf, &(elfdata.symtable), &(elfdata.elfhdr), &(elfdata.shtable), &elfdata.symtabIndex);
     if (afficher_symboles)
@@ -143,16 +156,15 @@ int main(int argc, char *argv[]) {
     
     // Supprimer les sections qui contiennent des tables de réimplantations
     if (supprime_rel) {
+        // supprime_rel_sections(fichier_elf, fichier_dest, &elfdata);
+        // fclose(fichier_dest);
         int index_text = find_section_index(elfdata, ".text");
         int index_data = find_section_index(elfdata, ".data");
         Elf32_Addr addr_text = elfdata.shtable[index_text].sh_addr;
         Elf32_Addr addr_data = elfdata.shtable[index_data].sh_addr;
-        supprime_rel_sections(fichier_elf, fichier_dest, &elfdata, addr_text, addr_data);
-        fclose(fichier_dest);
+        corriger_symboles(fichier_elf, fichier_dest, &elfdata, addr_text, addr_data);
+        //fclose(fichier_dest);
     }
-
-
-
 
 
 

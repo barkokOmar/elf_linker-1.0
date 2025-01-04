@@ -67,7 +67,7 @@ int affiche_reltab(Elf32 elfdata);
    valeur de retour : 0 si tout s'est bien passe, -1 sinon
    effets de bord : modifie le fichier ELF et la structure Elf32
 */
-int supprime_sh(FILE *file, Elf32 *elfdata, int index, Elf32_Addr addr_text, Elf32_Addr addr_data);
+int supprime_sh(FILE *file, Elf32 *elfdata, int index);
 
 /* supprime_relsh
    description : supprime les sections de type SHT_REL du fichier ELF
@@ -76,7 +76,9 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index, Elf32_Addr addr_text, Elf
    valeur de retour : 0 si tout s'est bien passe, -1 sinon
    effets de bord : modifie le fichier ELF et la structure Elf32
 */
-int supprime_rel_sections(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata,  Elf32_Addr addr_text, Elf32_Addr addr_data);
+int supprime_rel_sections(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata);
+
+int corriger_symboles(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata, Elf32_Addr addr_text, Elf32_Addr addr_data);
 
 /*--- Autre --*/
 
@@ -115,7 +117,7 @@ const char* get_symbind(unsigned char st_info);
 const char* get_section_name(Elf32 elfdata, int index);
 const char *get_reloc_type(Elf32_Word type);
 
-/* find_shstrtab_index: renvoie l'indice de la table des strings des sections (pas vraiment équiv à entente.e_shstrndx) */
+/* find_section_index: renvoie l'indice de la section de nom section_name si section_name est un nom section valide -1 sinon */
 int find_section_index(Elf32 elfdata, const char *section_name);
 /* get_file_size: renvoie la taille en octets de file ouvert en lecture ou ecriture */
 size_t get_file_size(FILE *file);
