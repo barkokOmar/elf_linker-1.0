@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
     // Afficher le contenue de la section spécifié par l'index section_index
     if (x_opt) {
         if (affiche_section_par_str)   // Afficher le contenue de la section spécifié par le nom de la section 
-            section_index = find_section_index(elfdata, section_name);
+            section_index = get_section_index(elfdata, section_name);
         if (section_index < 0 || section_index >= get_shnum(&elfdata.elfhdr)){
             if (affiche_section_par_str)
                 printf("readelf: Warning: Section %s was not dumped because it does not exist!.\n", section_name);
@@ -156,16 +156,14 @@ int main(int argc, char *argv[]) {
     
     // Supprimer les sections qui contiennent des tables de réimplantations
     if (supprime_rel) {
-        // supprime_rel_sections(fichier_elf, fichier_dest, &elfdata);
-        // fclose(fichier_dest);
-        int index_text = find_section_index(elfdata, ".text");
-        int index_data = find_section_index(elfdata, ".data");
+        supprime_rel_sections(fichier_elf, fichier_dest, &elfdata);
+        int index_text = get_section_index(elfdata, ".text");
+        int index_data = get_section_index(elfdata, ".data");
         Elf32_Addr addr_text = elfdata.shtable[index_text].sh_addr;
         Elf32_Addr addr_data = elfdata.shtable[index_data].sh_addr;
         corriger_symboles(fichier_elf, fichier_dest, &elfdata, addr_text, addr_data);
-        //fclose(fichier_dest);
+        fclose(fichier_dest);
     }
-
 
 
 

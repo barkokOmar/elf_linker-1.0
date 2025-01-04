@@ -77,7 +77,6 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index);
    effets de bord : modifie le fichier ELF et la structure Elf32
 */
 int supprime_rel_sections(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata);
-
 int corriger_symboles(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata, Elf32_Addr addr_text, Elf32_Addr addr_data);
 
 /*--- Autre --*/
@@ -90,7 +89,7 @@ int corriger_symboles(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata, El
 */
 void swap_endianess_elfhdr(Elf32_Ehdr *entete);
 void swap_endianess_shtable(Elf32_Shdr *shtable);
-void swap_endianess_symtable(Elf32_Sym *symtable);
+void swap_endianess_symbole(Elf32_Sym *symtable);
 void swap_endianess_elfdata(Elf32 *elfdata);
 
 
@@ -117,8 +116,8 @@ const char* get_symbind(unsigned char st_info);
 const char* get_section_name(Elf32 elfdata, int index);
 const char *get_reloc_type(Elf32_Word type);
 
-/* find_section_index: renvoie l'indice de la section de nom section_name si section_name est un nom section valide -1 sinon */
-int find_section_index(Elf32 elfdata, const char *section_name);
+/* get_section_index: renvoie l'indice de la section de nom section_name si section_name est un nom section valide -1 sinon */
+int get_section_index(Elf32 elfdata, const char *section_name);
 /* get_file_size: renvoie la taille en octets de file ouvert en lecture ou ecriture */
 size_t get_file_size(FILE *file);
 /* copy_file: copie le fichier source dans dest et renvoie le nombre d'octets écrites correctement */
