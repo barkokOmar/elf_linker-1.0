@@ -608,7 +608,8 @@ int affiche_reltab(Elf32 elfdata) {
 
 int find_section_index(Elf32 elfdata, const char *section_name) {
 	assert(elfdata.shtable);
-	
+	assert(elfdata.sh_strtab);
+
 	Elf32_Shdr *shtable = elfdata.shtable;
 	Elf32_Ehdr *elfhdr = &(elfdata.elfhdr);
 	const char *sh_strtab = elfdata.sh_strtab;
@@ -619,11 +620,12 @@ int find_section_index(Elf32 elfdata, const char *section_name) {
 		is_right_section = !strcmp(section_name, &sh_strtab[shtable[section_index].sh_name]);
 		section_index++;
 	}
-	if (!is_right_section){
-		//fprintf(stderr, "find_section_index : erreur, nom de section inexistant\n");
-		return -1;
+	section_index--;	// on décrémente pour avoir le bon index
+	if (!is_right_section) {
+		section_index = -1;
 	}
-	return section_index - 1;
+
+	return section_index ;
 }
 
 

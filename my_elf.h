@@ -77,7 +77,6 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index);
    effets de bord : modifie le fichier ELF et la structure Elf32
 */
 int supprime_rel_sections(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata);
-
 int corriger_symboles(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata, Elf32_Addr addr_text, Elf32_Addr addr_data);
 
 /*--- Autre --*/
