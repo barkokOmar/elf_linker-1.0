@@ -156,6 +156,10 @@ int main(int argc, char *argv[]) {
     
     // Supprimer les sections qui contiennent des tables de réimplantations
     if (supprime_rel) {
+        copy_file(fichier_elf, fichier_dest);
+        appliquer_relocations(fichier_elf, fichier_dest, &elfdata);
+        /*
+        */
         supprime_rel_sections(fichier_elf, fichier_dest, &elfdata);
         int index_text = get_section_index(elfdata, ".text");
         int index_data = get_section_index(elfdata, ".data");

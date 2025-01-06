@@ -10,13 +10,14 @@
 typedef struct {
    Elf32_Rel *rel;
    Elf32_Rela *rela;  
-   int shndx;        // indice de la section a laquelle la relocation s'applique
+   int shndx;
+   unsigned char rel_type;
    int relnum;       // nombre de relocations dans la table
 } Elf32_RelEntry;
 
 typedef struct {
    Elf32_RelEntry *entries;   
-   int entrynum;                // number of relocation entries (taille du tableau)
+   int entrynum;  // number of relocation entries (taille du tableau)
 } Elf32_Reltab;
 
 typedef struct {
@@ -60,8 +61,7 @@ int affiche_reltab(Elf32 elfdata);
 
 /*--- Interfaces Phase2 --*/
 
-/* supprime_sh
-   description : supprime la section d'indice donnee du fichier ELF
+/* supprime_sh: supprime la section d'indice donnee du fichier ELF
    paramètres : un fichier ELF ouvert en ecriture, la structure Elf32 contenant les donnees
    				du fichier, l'indice de la section a supprimer
    valeur de retour : 0 si tout s'est bien passe, -1 sinon
@@ -69,20 +69,26 @@ int affiche_reltab(Elf32 elfdata);
 */
 int supprime_sh(FILE *file, Elf32 *elfdata, int index);
 
-/* supprime_relsh
-   description : supprime les sections de type SHT_REL du fichier ELF
+/* supprime_relsh: supprime les sections de type SHT_REL du fichier ELF
    paramètres : un fichier ELF ouvert en ecriture, la structure Elf32 contenant les donnees
    				du fichier
-   valeur de retour : 0 si tout s'est bien passe, -1 sinon
+   valeur de retour : 0 si tout se passe bien, -1 sinon
    effets de bord : modifie le fichier ELF et la structure Elf32
 */
 int supprime_rel_sections(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata);
+
+/* corriger_symboles: fonction pour etape7 */
 int corriger_symboles(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata, Elf32_Addr addr_text, Elf32_Addr addr_data);
 
-/*--- Autre --*/
+/* update_sym_shndx: remplace les symboles qui on un numéros de section old_shndx par new_shndx dans la table des symboles */
+int update_sym_shndx(Elf32 *elfdata, int old_shndx, int new_shndx);
 
-/* swap_endianess_XXX
-	description : inverse l'endianess des valeurs de la structure donnee
+/* appliquer_relocations: etapes 8-9 */
+void appliquer_relocations(FILE *source, FILE *dest, Elf32 *elfdata);
+
+/*--- Autre Fonctions --*/
+
+/* swap_endianess_XXX: inverse l'endianess des valeurs de la structure donnee
 	paramètres : un pointeur vers la structure a modifier
 	valeur de retour : aucune
 	effet de bord : modifie la structure	
@@ -122,7 +128,4 @@ int get_section_index(Elf32 elfdata, const char *section_name);
 size_t get_file_size(FILE *file);
 /* copy_file: copie le fichier source dans dest et renvoie le nombre d'octets écrites correctement */
 size_t copy_file(FILE *source, FILE *dest);
-/* update_sym_shndx: remplace les symboles qui on un numéros de section old_shndx par new_shndx dans la  table des symboles */
-int update_sym_shndx(Elf32 *elfdata, int old_shndx, int new_shndx);
-
 #endif
