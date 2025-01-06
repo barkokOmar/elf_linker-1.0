@@ -95,7 +95,7 @@ int read_header(FILE *fichier, Elf32_Ehdr *entete) {
 void affiche_header(Elf32_Ehdr entete) {
 	printf("we are in %s endian\n", is_big_endian() ? "big" : "little");
 
-    printf("ELF header:\n");
+    printf("ELF Header:\n");
     printf("  Magic:    ");
     for(int i=0; i < EI_NIDENT; i++) {
         printf("%02x ", entete.e_ident[i]);
@@ -137,7 +137,7 @@ void affiche_header(Elf32_Ehdr entete) {
     printf("  Type:\t\t\t\t\t");
 	switch (entete.e_type) {
 		case ET_REL :
-			printf("Relocatable file\n");
+			printf("REL (Relocatable file)\n");
 			break;
 		case ET_EXEC :
 			printf("EXEC (Executable file)\n");
@@ -192,7 +192,7 @@ void affiche_header(Elf32_Ehdr entete) {
 	printf("  Version:\t\t\t\t0x%x\n", entete.e_version);
 
     //----------------Le Reste----------
-    printf("  Entry point address:\t\t\t0x%02x\n", entete.e_entry);
+    printf("  Entry point address:\t\t\t0x%x\n", entete.e_entry);
     printf("  Start of program headers:\t\t%d (bytes into file)\n", entete.e_phoff);
     printf("  Start of section headers:\t\t%d (bytes into file)\n", entete.e_shoff);
     printf("  Flags:\t\t\t\t0x%x\n", entete.e_flags);
