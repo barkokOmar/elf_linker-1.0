@@ -69,6 +69,8 @@ int affiche_reltab(Elf32 elfdata);
 */
 int supprime_sh(FILE *file, Elf32 *elfdata, int index);
 
+int fwrite_sh_addr_test_data(FILE *file, Elf32 *elfdata, Elf32_Addr addr_text, Elf32_Addr addr_data);
+
 /* supprime_relsh: supprime les sections de type SHT_REL du fichier ELF
    paramètres : un fichier ELF ouvert en ecriture, la structure Elf32 contenant les donnees
    				du fichier
@@ -79,12 +81,13 @@ int supprime_rel_sections(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata
 
 /* corriger_symboles: fonction pour etape7 */
 int corriger_symboles(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata, Elf32_Addr addr_text, Elf32_Addr addr_data);
+//int corriger_symboles(FILE *dest_stream, Elf32 *elfdata, Elf32_Addr adresse_absolue_symbole, Elf32_Sym *symbole);
 
 /* update_sym_shndx: remplace les symboles qui on un numéros de section old_shndx par new_shndx dans la table des symboles */
 int update_sym_shndx(Elf32 *elfdata, int old_shndx, int new_shndx);
 
 /* appliquer_relocations: etapes 8-9 */
-void appliquer_relocations(FILE *source, FILE *dest, Elf32 *elfdata);
+void appliquer_relocations(FILE *source, FILE *dest, Elf32 *elfdata, Elf32_Addr addr_text, Elf32_Addr addr_data);
 
 /*--- Autre Fonctions --*/
 

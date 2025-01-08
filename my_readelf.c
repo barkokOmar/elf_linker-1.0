@@ -157,15 +157,21 @@ int main(int argc, char *argv[]) {
     // Supprimer les sections qui contiennent des tables de réimplantations
     if (supprime_rel) {
         copy_file(fichier_elf, fichier_dest);
-        appliquer_relocations(fichier_elf, fichier_dest, &elfdata);
+
+        Elf32_Addr addr_text = 0x00000020;
+        Elf32_Addr addr_data = 0x00002800;
+        
+        appliquer_relocations(fichier_elf, fichier_dest, &elfdata, addr_text, addr_data);
         /*
         */
-        supprime_rel_sections(fichier_elf, fichier_dest, &elfdata);
-        int index_text = get_section_index(elfdata, ".text");
-        int index_data = get_section_index(elfdata, ".data");
-        Elf32_Addr addr_text = elfdata.shtable[index_text].sh_addr;
-        Elf32_Addr addr_data = elfdata.shtable[index_data].sh_addr;
+        // int index_text = get_section_index(elfdata, ".text");
+        // int index_data = get_section_index(elfdata, ".data");
+        // Elf32_Addr addr_text = elfdata.shtable[index_text].sh_addr;
+        // Elf32_Addr addr_data = elfdata.shtable[index_data].sh_addr;
         corriger_symboles(fichier_elf, fichier_dest, &elfdata, addr_text, addr_data);
+
+        supprime_rel_sections(fichier_elf, fichier_dest, &elfdata);
+        
         fclose(fichier_dest);
     }
 
