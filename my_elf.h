@@ -131,4 +131,6 @@ int get_section_index(Elf32 elfdata, const char *section_name);
 size_t get_file_size(FILE *file);
 /* copy_file: copie le fichier source dans dest et renvoie le nombre d'octets écrites correctement */
 size_t copy_file(FILE *source, FILE *dest);
+/* met à jour les index sh_link de la table des sections */
+void met_a_jour_shlink(Elf32 *elfdata);
 #endif

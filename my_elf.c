@@ -662,14 +662,7 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 		elfdata->shtable[new_shndx] = elfdata->shtable[old_shndx];
 		if (is_symatble(elfdata->shtable, new_shndx))
 			elfdata->symtabIndex = new_shndx;
-		// switch (elfdata->shtable[old_shndx].sh_type){
-		// 	case (SHT_SYMTAB):
-		// 		symtab_est_deplace = 1;
-		// 		break;
-		// 	case (SHT_SYMTAB)
-			
-		//}
-		// on met à jour les index des symboles
+		// on met à jour les index des tables des sections des symboles
 		update_sym_shndx(elfdata, old_shndx, new_shndx);	
 	}
 
@@ -680,6 +673,8 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 	elfhdr->e_shnum -= 1;
 	elfhdr->e_shstrndx = get_section_index(*elfdata, ".shstrtab");
      
+	met_a_jour_shlink(elfdata);
+
 	// ecrire la nouvelle entete et shtable dans le fichier le fichier destination
 	shoff = get_shoff(elfhdr);	// on stock avant de changer l'endianess
 	shnum = get_shnum(elfhdr);
@@ -944,62 +939,50 @@ Elf32_Half get_type(Elf32_Ehdr *entete) {
     assert(entete != NULL);
     return entete->e_type; 
 }
-
 Elf32_Half get_machine(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_machine; 
 }
-
 Elf32_Word get_version(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_version; 
 }
-
 Elf32_Addr get_entry(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_entry; 
 }
-
 Elf32_Off get_phoff(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_phoff; 
 }
-
 Elf32_Off get_shoff(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_shoff; 
 }
-
 Elf32_Word get_flags(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_flags; 
 }
-
 Elf32_Half get_ehsize(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_ehsize; 
 }
-
 Elf32_Half get_phentsize(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_phentsize; 
 }
-
 Elf32_Half get_phnum(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_phnum; 
 }
-
 Elf32_Half get_shentsize(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_shentsize; 
 }
-
 Elf32_Half get_shnum(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_shnum; 
 }
-
 Elf32_Half get_shstrndx(Elf32_Ehdr *entete) { 
     assert(entete != NULL);
     return entete->e_shstrndx; 
@@ -1023,7 +1006,6 @@ const char* get_st_shndx(Elf32_Half st_shndx) {
             return NULL;
     }
 }
-
 const char* get_st_visibility(unsigned char st_other) {
     switch (ELF32_ST_VISIBILITY(st_other)) {
         case STV_DEFAULT:
@@ -1128,3 +1110,24 @@ size_t copy_file(FILE *source, FILE *dest) {
 	return taille_lue;
 }
 
+
+void met_a_jour_shlink(Elf32 *elfdata) {
+	assert(elfdata);
+	assert(elfdata->shtable);
+
+	Elf32_Word strtabIndex = (Elf32_Word)get_section_index(*elfdata, ".strtab");
+
+	for (int i=0; i < get_shnum(&(elfdata->elfhdr)); i++) {
+		switch (elfdata->shtable[i].sh_type) {
+			case SHT_SYMTAB:
+				elfdata->shtable[i].sh_link = strtabIndex;
+				break;
+			case SHT_SYMTAB_SHNDX:
+			case SHT_REL:
+				elfdata->shtable[i].sh_link = (Elf32_Word)elfdata->symtabIndex;
+				break;
+			default:
+				break;
+		}
+	}
+}
