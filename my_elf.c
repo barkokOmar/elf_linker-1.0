@@ -547,9 +547,8 @@ void read_reltab(FILE *file, Elf32 *elfdata) {
 }
 
 int affiche_reltab(Elf32 elfdata) {
-	//printf("bonjour :)\n");
 	if (elfdata.reltab.entrynum == 0) {
-		fprintf(stderr, "There are no relocations in this file.\n");
+		//fprintf(stderr, "There are no relocations in this file.\n");
 		return 0;
 	}
 
