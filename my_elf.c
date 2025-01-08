@@ -478,7 +478,7 @@ void affiche_symtable(Elf32 elfdata, int symtabIndex) {
 
 	for (int i = 0; i < nombreDeSymboles; i++) {
 		symbole = elfdata.symtable[i];
-		printf("   %3d: %08x  %4d %-8s%-7sTOTOTOT  %3d %-s\n",
+		printf("   %3d: %08x  %4d %-8s%-7sDEFAULT  %3d %-s\n",
 			i, symbole.st_value, symbole.st_size, get_symtype(symbole.st_info), 
 			get_symbind(symbole.st_info), symbole.st_shndx, &(elfdata.sym_strtab[symbole.st_name])
 		);
