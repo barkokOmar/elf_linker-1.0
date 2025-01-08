@@ -1,0 +1,18 @@
+ ***Description des testeurs***
+Nos tests sont appeler testeurN.sh avec N entre 1 et 4 inclus,
+Ce qui correspond au test de l'etape N.
+Ils sont automatiser pour comparer les resultats de nos programmes
+et ceux de arm-none-eabi-readelf de l'etape correspodant sur l'ensemble 
+des exemples donnees.
+On ne comparer que les parties pertinentes des resultats.
+
+ ***Utilisation***
+ ex: pour tester l'etape 1 il faut tape la commande suivant dans le terminal:
+    ./testeur1.sh
+
+ ***Sorties***
+ -En cas d'erruer le programme affichera les lignes des deux 
+    resultats qui sont different
+
+ -En cas de succes le programme n'affichera rien ou juste des traits(------------)
+   
