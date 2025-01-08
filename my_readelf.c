@@ -25,7 +25,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    //Elf32_Ehdr elfhdr;
     Elf32_Ehdr *elfhdr = (Elf32_Ehdr*)malloc(sizeof(Elf32_Ehdr));
     Elf32_Shdr *shtable = NULL;
     Elf32_Sym *symtable = NULL;
@@ -46,7 +45,7 @@ int main(int argc, char *argv[]) {
     int afficher_reltab = 0;
     int section_index = -1; 
     int symtabIndex = -1;
-    int supprime_rel = 0;
+    int applique_rel = 0;
     int affiche_section_par_str = 0;
     // Utilisation de getopt pour gérer les options -h et -S,etc...
     int opt;
@@ -61,11 +60,8 @@ int main(int argc, char *argv[]) {
             case 'x':  // Option pour afficher le contenu de la section
                 if (optarg != NULL) {
                     x_opt = 1;
-                    section_index = (int)strtol(optarg, &endptr, 10);  // Convertir l'argument en entier
+                    section_index = (int)strtol(optarg, &endptr, 10);  
                     if (*endptr != '\0' || *optarg == '\0') {
-                        // fprintf(stderr, "Erreur : L'index de section doit être un entier\n");
-                        // help();
-                        // return 1;
                         affiche_section_par_str = 1;
                         section_name = optarg;
                     }
@@ -77,8 +73,8 @@ int main(int argc, char *argv[]) {
             case 'r':  // Option pour afficher la table des sections
                 afficher_reltab = 1;
                 break;
-            case 'R':  // Option pour supprimer les sections de type SHT_REL
-                supprime_rel = 1;
+            case 'R': //option pour appliquer les relocations, corriger les symboles et supprimer les sections de type SHT_REL
+                applique_rel = 1;
                 if (optarg != NULL) {
                     fichier_dest = fopen(optarg, "wb");
                     if (!fichier_dest) {
@@ -153,21 +149,16 @@ int main(int argc, char *argv[]) {
     read_reltab(fichier_elf, &elfdata);
     if (afficher_reltab)
         affiche_reltab(elfdata);
-    
-    // Supprimer les sections qui contiennent des tables de réimplantations
-    if (supprime_rel) {
+
+    /*applique les relocations, corrige les symboles et supprime les sections de type SHT_REL */
+    if (applique_rel) {
         copy_file(fichier_elf, fichier_dest);
 
         Elf32_Addr addr_text = 0x00000020;
         Elf32_Addr addr_data = 0x00002800;
         
         appliquer_relocations(fichier_elf, fichier_dest, &elfdata, addr_text, addr_data);
-        /*
-        */
-        // int index_text = get_section_index(elfdata, ".text");
-        // int index_data = get_section_index(elfdata, ".data");
-        // Elf32_Addr addr_text = elfdata.shtable[index_text].sh_addr;
-        // Elf32_Addr addr_data = elfdata.shtable[index_data].sh_addr;
+
         corriger_symboles(fichier_elf, fichier_dest, &elfdata, addr_text, addr_data);
 
         supprime_rel_sections(fichier_elf, fichier_dest, &elfdata);

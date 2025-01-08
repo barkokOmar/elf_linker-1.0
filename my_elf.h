@@ -69,9 +69,10 @@ int affiche_reltab(Elf32 elfdata);
 */
 int supprime_sh(FILE *file, Elf32 *elfdata, int index);
 
+/*fwrite_sh_addr_test_data pour mettre à jour les adresses sh_addr des sections .data et .text */
 int fwrite_sh_addr_test_data(FILE *file, Elf32 *elfdata, Elf32_Addr addr_text, Elf32_Addr addr_data);
 
-/* supprime_relsh: supprime les sections de type SHT_REL du fichier ELF
+/* supprime_rel_sections: supprime les sections de type SHT_REL du fichier ELF
    paramètres : un fichier ELF ouvert en ecriture, la structure Elf32 contenant les donnees
    				du fichier
    valeur de retour : 0 si tout se passe bien, -1 sinon
@@ -81,7 +82,6 @@ int supprime_rel_sections(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata
 
 /* corriger_symboles: fonction pour etape7 */
 int corriger_symboles(FILE *source_stream, FILE *dest_stream, Elf32 *elfdata, Elf32_Addr addr_text, Elf32_Addr addr_data);
-//int corriger_symboles(FILE *dest_stream, Elf32 *elfdata, Elf32_Addr adresse_absolue_symbole, Elf32_Sym *symbole);
 
 /* update_sym_shndx: remplace les symboles qui on un numéros de section old_shndx par new_shndx dans la table des symboles */
 int update_sym_shndx(Elf32 *elfdata, int old_shndx, int new_shndx);
@@ -116,7 +116,7 @@ Elf32_Half get_shentsize(Elf32_Ehdr *entete);
 Elf32_Half get_shnum(Elf32_Ehdr *entete);
 Elf32_Half get_shstrndx(Elf32_Ehdr *entete);
 
-int is_symatble(Elf32_Shdr *shtable, int index);
+int is_symtable(Elf32_Shdr *shtable, int index);
 const char* get_st_shndx(Elf32_Half st_shndx);
 const char* get_st_visibility(unsigned char st_other);
 

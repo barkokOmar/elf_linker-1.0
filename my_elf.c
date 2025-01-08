@@ -91,7 +91,6 @@ size_t read_header(FILE *fichier, Elf32_Ehdr *entete) {
 
 
 void affiche_header(Elf32_Ehdr entete) {
-	//printf("This machine reads in %s endian\n", is_big_endian() ? "big" : "little");
 
     printf("ELF header:\n");
     printf("  Magic:   ");
@@ -339,10 +338,9 @@ void affiche_contenu_section(FILE *file, Elf32_Shdr *shtable, char *shstrtab_dat
 		if ((i+1)%4==0){//pour faire un espace chaque 4 octet affiché
 			printf(" ");
 		}
-		if ((i+1) == section.sh_size && (i + 1) % 16 != 0){
-			//boucle pour ameliorer l'affichage 
+		if ((i+1) == section.sh_size && (i + 1) % 16 != 0){ 
 			int e = i+1;
-			while (e % 16 != 0){
+			while (e % 16 != 0){//boucle pour ameliorer l'affichage
 				printf("  ");
 				if ((e+1)%4==0) { 
 					printf(" "); 
@@ -386,7 +384,7 @@ void swap_endianess_symbole(Elf32_Sym *symtable) {
 	symtable->st_shndx = reverse_2(symtable->st_shndx);
 }
 
-int is_symatble(Elf32_Shdr *shtable, int index) { return SHT_SYMTAB == shtable[index].sh_type; }
+int is_symtable(Elf32_Shdr *shtable, int index) { return SHT_SYMTAB == shtable[index].sh_type; }
 
 void read_symtable(FILE *file, Elf32_Sym **symtable, Elf32_Ehdr *elfhdr, Elf32_Shdr **shtable, int *symtabIndex) {
 	assert(file);
@@ -394,7 +392,7 @@ void read_symtable(FILE *file, Elf32_Sym **symtable, Elf32_Ehdr *elfhdr, Elf32_S
 
 	// on cherche l'indice de la table de symboles dans la table des sections
 	*symtabIndex = 0;
-	while ( *symtabIndex < get_shnum(elfhdr) && !is_symatble(*shtable, *symtabIndex) )
+	while ( *symtabIndex < get_shnum(elfhdr) && !is_symtable(*shtable, *symtabIndex) )
 		(*symtabIndex)++;
 	
 	Elf32_Shdr sh_symtable = (*shtable)[*symtabIndex];
@@ -660,7 +658,7 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 		old_shndx = i+1;
 		new_shndx = i;
 		elfdata->shtable[new_shndx] = elfdata->shtable[old_shndx];
-		if (is_symatble(elfdata->shtable, new_shndx))
+		if (is_symtable(elfdata->shtable, new_shndx))
 			elfdata->symtabIndex = new_shndx;
 		// on met à jour les index des tables des sections des symboles
 		update_sym_shndx(elfdata, old_shndx, new_shndx);	
@@ -682,7 +680,6 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 	symtab_size = elfdata->shtable[elfdata->symtabIndex].sh_size;
 	nombreDeSymboles = symtab_size / sizeof(Elf32_Sym);
 	if (!is_big_endian()) {		// on swap les octets si la machine est en little endian
-		//swap_endianess_elfdata(elfdata);//ça ne marche pas (erreur de segmentation)
 		swap_endianess_elfhdr(elfhdr);
 		for (int i = 0; i < shnum; i++)
 			swap_endianess_shtable(&(elfdata->shtable[i]));
@@ -705,7 +702,6 @@ int supprime_sh(FILE *file, Elf32 *elfdata, int index) {
 	assert(taille_ecrite == symtab_size);
 
 	if (!is_big_endian()) {// on reswap les octets pour revenir à l'etat initial
-		//swap_endianess_elfdata(elfdata);// ça ne marche pas (erreur de segmentation)
 		swap_endianess_elfhdr(elfhdr);
 		for (int i = 0; i < shnum; i++)
 			swap_endianess_shtable(&(elfdata->shtable[i]));
@@ -765,7 +761,7 @@ int corriger_symboles(FILE *source, FILE *dest, Elf32 *elfdata, Elf32_Addr addr_
 	}
 
 	fseek(dest, symoff, SEEK_SET);	
-	taille_ecrite = fwrite(elfdata->symtable, 1, symtab_size, dest);//file ??
+	taille_ecrite = fwrite(elfdata->symtable, 1, symtab_size, dest);
 	assert(taille_ecrite == symtab_size);
 
 	if (!is_big_endian()) {
@@ -774,38 +770,7 @@ int corriger_symboles(FILE *source, FILE *dest, Elf32 *elfdata, Elf32_Addr addr_
 	}
 	return 0;
 }
-// int corriger_symboles(FILE *dest, Elf32 *elfdata, Elf32_Addr adresse_absolue_symbole, Elf32_Sym *symbole) {
-// 	assert(dest);
-// 	assert(elfdata);
-//     assert(symbole);
 
-// 	Elf32_Word symtab_size = elfdata->shtable[elfdata->symtabIndex].sh_size;
-// 	Elf32_Off symoff = elfdata->shtable[elfdata->symtabIndex].sh_offset;
-// 	size_t taille_ecrite = 0;
-// 	int nombreDeSymboles = symtab_size / sizeof(Elf32_Sym);
-// 	int section_index = symbole->st_shndx;
-
-// 	if (section_index == SHN_UNDEF || section_index == SHN_ABS)
-// 		return -1;//-1 le symbole ne doit pas etre corriger 
-
-// 	symbole->st_value =  adresse_absolue_symbole;
-
-// 	if (!is_big_endian()) {
-// 		for (int i = 0; i < nombreDeSymboles; i++)
-// 			swap_endianess_symbole(&(elfdata->symtable[i]));
-
-// 	}
-
-// 	fseek(dest, symoff, SEEK_SET);	
-// 	taille_ecrite = fwrite(elfdata->symtable, 1, symtab_size, dest);//file ??
-// 	assert(taille_ecrite == symtab_size);
-
-// 	if (!is_big_endian()) {
-// 		for (int i = 0; i < nombreDeSymboles; i++)
-// 			swap_endianess_symbole(&(elfdata->symtable[i]));
-// 	}
-// 	return 0;
-// }
 int fwrite_sh_addr_test_data(FILE *file, Elf32 *elfdata, Elf32_Addr addr_text, Elf32_Addr addr_data){
 	assert(file);
 	assert(elfdata);
@@ -848,7 +813,6 @@ void appliquer_relocations(FILE *source_stream, FILE *dest_stream, Elf32 *elfdat
 	Elf32_Sym *symtable = elfdata->symtable;
 	Elf32_RelEntry *rel_section;
 	Elf32_Rel rel_section_entry;
-	// Elf32_Word rel_section_type;
 	unsigned char rel_section_type;
 	int nombreDeSectionsRel = elfdata->reltab.entrynum;
 	size_t taille_ecrite = 0;
@@ -858,7 +822,6 @@ void appliquer_relocations(FILE *source_stream, FILE *dest_stream, Elf32 *elfdat
         rel_section = &entries[i];
     
 		rel_section_type = rel_section->rel_type;
-		//printf("type_section : %s\n", rel_section_type);//debug
 		if (!is_rel(rel_section_type))
 			continue;
         
@@ -877,7 +840,6 @@ void appliquer_relocations(FILE *source_stream, FILE *dest_stream, Elf32 *elfdat
 
 			// Calcul de l'adresse absolue du symbole
             if (symbole.st_shndx != SHN_ABS && symbole.st_shndx != SHN_UNDEF) {
-                //adresse_absolue_symbole += sh_cible_ptr->sh_addr;//m
 				if (get_section_index(*elfdata, ".text") == symbole.st_shndx)
 					adresse_absolue_symbole += addr_text;
 				if (get_section_index(*elfdata, ".data") == symbole.st_shndx)
@@ -887,7 +849,7 @@ void appliquer_relocations(FILE *source_stream, FILE *dest_stream, Elf32 *elfdat
             // Lecture de la valeur actuelle à l'offset donné dans la section cible
             Elf32_Addr current_value = 0;
             fseek(source_stream, sh_cible_ptr->sh_offset + rel_offset, SEEK_SET);
-            taille_lue = fread(&current_value, 1, sizeof(Elf32_Addr), source_stream);	// endianess...?
+            taille_lue = fread(&current_value, 1, sizeof(Elf32_Addr), source_stream);	
 			assert(taille_lue == sizeof(Elf32_Addr));
 			if (!is_big_endian())
 				current_value = reverse_4(current_value);
@@ -917,9 +879,6 @@ void appliquer_relocations(FILE *source_stream, FILE *dest_stream, Elf32 *elfdat
             fseek(dest_stream, sh_cible_ptr->sh_offset + rel_offset, SEEK_SET);
             taille_ecrite = fwrite(&current_value, sizeof(Elf32_Addr), 1, dest_stream); 
 			assert(taille_ecrite == 1);
-			// addr_text+=10;
-			// addr_data+=10;
-			//corriger_symboles(dest_stream, elfdata, adresse_absolue_symbole, symbole);
 
 		}
     }
