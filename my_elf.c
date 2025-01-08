@@ -93,7 +93,7 @@ size_t read_header(FILE *fichier, Elf32_Ehdr *entete) {
 void affiche_header(Elf32_Ehdr entete) {
 	//printf("This machine reads in %s endian\n", is_big_endian() ? "big" : "little");
 
-    printf("ELF header:\n");
+    printf("ELF Header:\n");
     printf("  Magic:   ");
     for(int i=0; i < EI_NIDENT; i++)
         printf("%02x ", entete.e_ident[i]);
@@ -124,7 +124,7 @@ void affiche_header(Elf32_Ehdr entete) {
     printf("  Type:                              ");
 	switch (entete.e_type) {
 		case ET_REL :
-			printf("Relocatable file\n");
+			printf("REL (Relocatable file)\n");
 			break;
 		case ET_EXEC :
 			printf("EXEC (Executable file)\n");
@@ -224,6 +224,7 @@ const char* get_section_type(Elf32_Word type) {
         case SHT_HIPROC: return "HIPROC";
         case SHT_LOUSER: return "LOUSER";
         case SHT_HIUSER: return "HIUSER";
+		case SHT_ARM_ATTRIBUTES: return "ARM_ATTRIBUTES";
         default: return "UNKNOWN";
     }
 }
@@ -554,7 +555,7 @@ void read_reltab(FILE *file, Elf32 *elfdata) {
 int affiche_reltab(Elf32 elfdata) {
 	//printf("bonjour :)\n");
 	if (elfdata.reltab.entrynum == 0) {
-		fprintf(stderr, "There are no relocations in this file.\n");
+		//fprintf(stderr, "There are no relocations in this file.\n");
 		return 0;
 	}
 
